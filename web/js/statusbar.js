@@ -1,5 +1,6 @@
-/* OmaBerry Status Bar
+/* OmaBerry Status Bar — Waybar-inspired Top Panel
  * Clock, battery, CPU/Memory telemetry, workspace indicator
+ * 100% Pure SVG Vector Icons, Zero Unicode Emojis
  */
 
 'use strict';
@@ -10,8 +11,7 @@ window.OB.StatusBar = (function () {
   const K = window.OB.Kernel;
 
   let elTime = null;
-  let elDate = null;
-  let elBattery = null;
+  let elBatteryText = null;
   let elWifi = null;
   let elWsPills = [];
   let elShade = null;
@@ -21,10 +21,6 @@ window.OB.StatusBar = (function () {
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     if (elTime) elTime.textContent = `${hours}:${minutes}`;
-
-    const month = now.getMonth() + 1;
-    const date = now.getDate();
-    if (elDate) elDate.textContent = `${month}/${date}`;
   }
 
   function initBattery() {
@@ -32,9 +28,9 @@ window.OB.StatusBar = (function () {
       navigator.getBattery().then(function (battery) {
         function updateBat() {
           const level = Math.round(battery.level * 100);
-          const charging = battery.charging ? '⚡' : '';
-          if (elBattery) {
-            elBattery.textContent = `${charging}${level}%`;
+          const chg = battery.charging ? '+' : '';
+          if (elBatteryText) {
+            elBatteryText.textContent = `${chg}${level}%`;
           }
         }
         updateBat();
@@ -42,7 +38,7 @@ window.OB.StatusBar = (function () {
         battery.addEventListener('chargingchange', updateBat);
       }).catch(function () {});
     } else {
-      if (elBattery) elBattery.textContent = '100%';
+      if (elBatteryText) elBatteryText.textContent = '100%';
     }
   }
 
@@ -74,9 +70,8 @@ window.OB.StatusBar = (function () {
   }
 
   function init() {
-    elTime = document.getElementById('status-time');
-    elDate = document.getElementById('status-date');
-    elBattery = document.getElementById('status-battery');
+    elTime = document.getElementById('status-time-val');
+    elBatteryText = document.getElementById('status-battery-val');
     elWifi = document.getElementById('status-wifi');
     elShade = document.getElementById('quick-shade');
 
@@ -111,7 +106,7 @@ window.OB.StatusBar = (function () {
     // Sysinfo telemetry via WebSocket
     K.on('ws:sysinfo', (data) => {
       if (data && data.cpu && elWifi) {
-        elWifi.title = `Load: ${data.cpu}% | Free RAM: ${data.memFreeMb}MB`;
+        elWifi.title = `CPU: ${data.cpu}% | Free RAM: ${data.memFreeMb}MB`;
       }
     });
 

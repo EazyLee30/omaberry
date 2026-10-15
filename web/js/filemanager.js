@@ -1,5 +1,6 @@
 /* OmaBerry File Manager
  * Safe file browsing, viewing and editing on Q20 / QNX filesystem
+ * 100% Pure SVG Vector Icons, Zero Unicode Emojis
  */
 
 'use strict';
@@ -36,18 +37,19 @@ window.OB.FileManager = (function () {
   }
 
   function renderList() {
+    if (!listEl) listEl = document.getElementById('fm-list');
     if (!listEl) return;
     listEl.innerHTML = '';
 
     entries.forEach((entry, idx) => {
       const item = document.createElement('div');
       item.className = 'launcher-item' + (idx === selectedIndex ? ' selected' : '');
-      const icon = entry.isDir ? '📁' : '📄';
+      const iconSvg = entry.isDir ? window.OB.Icons.folder : window.OB.Icons.file;
       const sizeStr = entry.isDir ? 'DIR' : `${entry.size || 0}B`;
 
       item.innerHTML = `
         <div class="launcher-item-left">
-          <div class="launcher-item-icon">${icon}</div>
+          <div class="launcher-item-icon">${iconSvg}</div>
           <span class="launcher-item-title">${entry.name}</span>
         </div>
         <span class="launcher-item-badge">${sizeStr}</span>

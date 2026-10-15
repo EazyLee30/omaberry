@@ -1,5 +1,5 @@
-/* OmaBerry Terminal Renderer
- * WebSocket PTY bridge, ANSI color parser, command history, and input handler
+/* OmaBerry Terminal Subsystem
+ * WebSocket PTY bridge, ANSI color parser, Starship prompt, and persistent Q20 keyboard focus
  */
 
 'use strict';
@@ -26,7 +26,7 @@ window.OB.Terminal = (function () {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
 
-    // Standard ANSI color codes
+    // Standard ANSI reset
     out = out.replace(/\x1b\[0m/g, '</span>');
     out = out.replace(/\x1b\[1m/g, '<span class="ansi-bold">');
     out = out.replace(/\x1b\[4m/g, '<span class="ansi-underline">');
@@ -57,7 +57,9 @@ window.OB.Terminal = (function () {
   }
 
   function appendOutput(rawText) {
+    if (!outputEl) outputEl = document.getElementById('term-output');
     if (!outputEl) return;
+
     const html = ansiToHtml(rawText);
     const span = document.createElement('span');
     span.innerHTML = html;
@@ -72,12 +74,14 @@ window.OB.Terminal = (function () {
   }
 
   function sendCommand(cmd) {
-    if (!cmd && cmd !== '') return;
-    history.push(cmd);
-    if (history.length > MAX_HISTORY) history.shift();
-    historyIndex = history.length;
+    if (cmd === undefined || cmd === null) return;
+    if (cmd !== '') {
+      history.push(cmd);
+      if (history.length > MAX_HISTORY) history.shift();
+      historyIndex = history.length;
+    }
 
-    // Send through WebSocket to Node server
+    // Send through WebSocket to Node server PTY
     const success = K.send('pty:write', { data: cmd + '\n' });
     if (!success) {
       // Local fallback / offline mode simulation
@@ -92,13 +96,64 @@ window.OB.Terminal = (function () {
     }
   }
 
+  function sendRaw(str) {
+    K.send('pty:write', { data: str });
+  }
+
   function clear() {
+    if (!outputEl) outputEl = document.getElementById('term-output');
     if (outputEl) outputEl.innerHTML = '';
   }
 
   function focus() {
-    if (inputEl) inputEl.focus();
+    if (!inputEl) inputEl = document.getElementById('term-input');
+    if (inputEl) {
+      inputEl.focus();
+      // Ensure mobile virtual keyboard or hardware input route is established
+      setTimeout(() => {
+        try { inputEl.focus(); } catch (e) {}
+      }, 50);
+    }
     K.setFocus('terminal');
+  }
+
+  function initKeybar() {
+    const buttons = document.querySelectorAll('.keybar-btn');
+    buttons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const cmd = btn.getAttribute('data-cmd');
+        const key = btn.getAttribute('data-key');
+
+        if (cmd === 'ctrl-c') {
+          sendRaw('\x03');
+          appendOutput('^C\n');
+        } else if (cmd === 'clear') {
+          clear();
+        } else if (cmd) {
+          sendCommand(cmd);
+        } else if (key === 'Escape') {
+          if (inputEl) inputEl.value = '';
+          focus();
+        } else if (key === 'Tab') {
+          sendRaw('\t');
+        } else if (key === 'ArrowUp') {
+          if (historyIndex > 0) {
+            historyIndex--;
+            if (inputEl) inputEl.value = history[historyIndex] || '';
+          }
+        } else if (key === 'ArrowDown') {
+          if (historyIndex < history.length - 1) {
+            historyIndex++;
+            if (inputEl) inputEl.value = history[historyIndex] || '';
+          } else {
+            historyIndex = history.length;
+            if (inputEl) inputEl.value = '';
+          }
+        }
+        focus();
+      });
+    });
   }
 
   function init() {
@@ -106,16 +161,40 @@ window.OB.Terminal = (function () {
     inputEl = document.getElementById('term-input');
     statusTagEl = document.getElementById('term-status-tag');
 
-    // Welcome banner
+    // Welcome banner in authentic Starship & Omarchy branding
     appendOutput(
       '\x1b[34m┌──────────────────────────────────────────────┐\x1b[0m\n' +
-      '\x1b[34m│\x1b[0m  \x1b[1;37mOmaBerry Shell\x1b[0m — Q20 × QNX × BerryCore     \x1b[34m│\x1b[0m\n' +
-      '\x1b[34m│\x1b[0m  Type \x1b[32mhelp\x1b[0m or press \x1b[33mAlt+L\x1b[0m for launcher       \x1b[34m│\x1b[0m\n' +
+      '\x1b[34m│\x1b[0m  \x1b[1;36mOMARCHY BERRY\x1b[0m — Q20 × QNX × BerryCore       \x1b[34m│\x1b[0m\n' +
+      '\x1b[34m│\x1b[0m  \x1b[32mOmarchy Quattro\x1b[0m · Catppuccin · Starship     \x1b[34m│\x1b[0m\n' +
+      '\x1b[34m│\x1b[0m  Press \x1b[33mAlt+L\x1b[0m or \x1b[33mBB Menu\x1b[0m for Launcher         \x1b[34m│\x1b[0m\n' +
       '\x1b[34m└──────────────────────────────────────────────┘\x1b[0m\n\n'
     );
 
     if (inputEl) {
       inputEl.addEventListener('keydown', (e) => {
+        // Ctrl+C handling
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+          e.preventDefault();
+          sendRaw('\x03');
+          appendOutput('^C\n');
+          inputEl.value = '';
+          return;
+        }
+
+        // Ctrl+L handling
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
+          e.preventDefault();
+          clear();
+          return;
+        }
+
+        // Tab key
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          sendRaw(inputEl.value + '\t');
+          return;
+        }
+
         if (e.key === 'Enter') {
           e.preventDefault();
           const cmd = inputEl.value;
@@ -144,25 +223,28 @@ window.OB.Terminal = (function () {
       });
     }
 
-    // Output area click focuses input
-    if (outputEl) {
-      outputEl.addEventListener('click', () => {
+    // Output click or container click refocuses input
+    const container = document.querySelector('.terminal-container');
+    if (container) {
+      container.addEventListener('click', () => {
         focus();
       });
     }
 
+    initKeybar();
+
     // WebSocket events
     K.on('ws:open', () => {
       if (statusTagEl) {
-        statusTagEl.textContent = 'CONNECTED';
+        statusTagEl.textContent = 'ONLINE';
         statusTagEl.className = 'term-tag connected';
       }
-      appendOutput('\x1b[32m[Connected to OmaBerry PTY Bridge]\x1b[0m\n');
+      appendOutput('\x1b[32m[Connected to Q20 PTY Bridge]\x1b[0m\n');
     });
 
     K.on('ws:close', () => {
       if (statusTagEl) {
-        statusTagEl.textContent = 'DISCONNECTED';
+        statusTagEl.textContent = 'OFFLINE';
         statusTagEl.className = 'term-tag disconnected';
       }
     });
@@ -180,13 +262,16 @@ window.OB.Terminal = (function () {
     });
 
     K.on('action:toggle-terminal', () => {
-      if (K.getState('focus') === 'terminal') {
-        K.setFocus('desktop');
-        if (inputEl) inputEl.blur();
+      if (K.getState('focus') === 'terminal' && K.getState('workspace') === 0) {
+        // keep focus in terminal
       } else {
         K.emit('action:switch-workspace', { index: 0 });
         focus();
       }
+    });
+
+    K.on('terminal:focus', () => {
+      focus();
     });
 
     K.on('terminal:run', (data) => {
@@ -198,10 +283,14 @@ window.OB.Terminal = (function () {
     K.register('terminal', {
       append: appendOutput,
       send: sendCommand,
+      sendRaw,
       clear,
       focus
     });
+
+    // Automatically focus on initialization
+    setTimeout(focus, 150);
   }
 
-  return { init, append: appendOutput, send: sendCommand, clear, focus };
+  return { init, append: appendOutput, send: sendCommand, sendRaw, clear, focus };
 })();

@@ -1,5 +1,10 @@
 /* OmaBerry Workspace Manager
- * 4 virtual workspaces, tiling layout, window focus management
+ * 5 virtual workspaces:
+ *   WS 0: Desktop Home (Omarchy Canvas)
+ *   WS 1: Terminal (BerryCore sh)
+ *   WS 2: File Manager (BerryFS)
+ *   WS 3: Web & Community Hub
+ *   WS 4: System Diagnostics
  */
 
 'use strict';
@@ -8,7 +13,7 @@ window.OB = window.OB || {};
 
 window.OB.Workspace = (function () {
   const K = window.OB.Kernel;
-  const TOTAL_WORKSPACES = 4;
+  const TOTAL_WORKSPACES = 5;
   let currentWorkspace = 0;
   let workspaceEls = [];
 
@@ -29,6 +34,15 @@ window.OB.Workspace = (function () {
 
     K.setState('workspace', currentWorkspace);
     K.emit('workspace:changed', { from: prev, to: currentWorkspace });
+
+    if (currentWorkspace === 1) {
+      K.setFocus('terminal');
+      K.emit('terminal:focus', {});
+    } else if (currentWorkspace === 2) {
+      K.setFocus('fileman');
+    } else {
+      K.setFocus('desktop');
+    }
   }
 
   function nextWorkspace() {
@@ -47,10 +61,6 @@ window.OB.Workspace = (function () {
     const appName = winEl.getAttribute('data-app');
     if (appName) {
       K.setFocus(appName);
-      const titleEl = document.getElementById('status-app-title');
-      if (titleEl) {
-        titleEl.textContent = winEl.querySelector('.window-title')?.textContent || appName;
-      }
     }
   }
 
@@ -67,7 +77,7 @@ window.OB.Workspace = (function () {
     const els = document.querySelectorAll('.workspace');
     workspaceEls = Array.from(els);
 
-    // Initial activation
+    // Initial activation: Workspace 0 is Desktop Home
     switchWorkspace(0);
 
     // Register click-to-focus on windows
@@ -80,11 +90,7 @@ window.OB.Workspace = (function () {
     document.querySelectorAll('.win-btn.close').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const win = btn.closest('.window-tile');
-        if (win) {
-          win.style.display = 'none';
-          K.emit('window:closed', { target: win });
-        }
+        switchWorkspace(0); // Close window returns to desktop
       });
     });
 

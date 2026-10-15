@@ -134,8 +134,8 @@ window.OB.Kernel = (function () {
   /* ── Focus Management ──────────────────────────────────────────── */
 
   /* Which component currently owns keyboard input.
-   * Possible values: 'desktop', 'terminal', 'launcher', 'fileman', 'palette' */
-  setState('focus', 'desktop');
+   * Possible values: 'terminal', 'launcher', 'fileman', 'shade', 'desktop' */
+  setState('focus', 'terminal');
   setState('ws', 'disconnected');
   setState('workspace', 0);
   setState('fullscreen', false);

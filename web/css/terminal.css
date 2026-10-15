@@ -1,5 +1,5 @@
-/* OmaBerry Terminal Styles
- * Monospace ANSI terminal with PTY integration, cursor blink, and status
+/* OmaBerry Terminal Styles — Catppuccin Mocha & Starship Aesthetic
+ * Monospace ANSI terminal with PTY integration, touch bar, and Starship prompt
  */
 
 .terminal-container {
@@ -7,11 +7,11 @@
   flex-direction: column;
   width: 100%;
   height: 100%;
-  background-color: #05070a;
-  color: #c9d1d9;
+  background-color: var(--ob-bg-crust);
+  color: var(--ob-text-primary);
   font-family: var(--ob-font-mono);
-  font-size: 11.5px;
-  line-height: 1.35;
+  font-size: 11px;
+  line-height: 1.38;
   overflow: hidden;
   position: relative;
 }
@@ -20,55 +20,69 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 6px 8px;
+  padding: 8px 10px;
   white-space: pre-wrap;
   word-break: break-all;
   user-select: text;
   -webkit-user-select: text;
   scroll-behavior: smooth;
+  color: var(--ob-text-primary);
 }
 
 .terminal-line {
   min-height: 16px;
 }
 
-/* ANSI 16-color palette */
-.ansi-black { color: #484f58; }
-.ansi-red { color: #ff7b72; }
-.ansi-green { color: #3fb950; }
-.ansi-yellow { color: #d29922; }
-.ansi-blue { color: #58a6ff; }
-.ansi-magenta { color: #bc8cff; }
-.ansi-cyan { color: #39c5cf; }
-.ansi-white { color: #f0f6fc; }
+/* ── Catppuccin Mocha 16-Color Terminal Palette ───────────────── */
+.ansi-black { color: #45475a; }
+.ansi-red { color: #f38ba8; }
+.ansi-green { color: #a6e3a1; }
+.ansi-yellow { color: #f9e2af; }
+.ansi-blue { color: #89b4fa; }
+.ansi-magenta { color: #f5c2e7; }
+.ansi-cyan { color: #94e2d5; }
+.ansi-white { color: #bac2de; }
 
-.ansi-bright-black { color: #6e7681; }
-.ansi-bright-red { color: #ffa198; }
-.ansi-bright-green { color: #56d364; }
-.ansi-bright-yellow { color: #e3b341; }
-.ansi-bright-blue { color: #79c0ff; }
-.ansi-bright-magenta { color: #d2a8ff; }
-.ansi-bright-cyan { color: #56d4dd; }
-.ansi-bright-white { color: #ffffff; }
+.ansi-bright-black { color: #585b70; }
+.ansi-bright-red { color: #f38ba8; }
+.ansi-bright-green { color: #a6e3a1; }
+.ansi-bright-yellow { color: #f9e2af; }
+.ansi-bright-blue { color: #89b4fa; }
+.ansi-bright-magenta { color: #cba6f7; }
+.ansi-bright-cyan { color: #89dceb; }
+.ansi-bright-white { color: #cdd6f4; }
 
 .ansi-bold { font-weight: bold; }
 .ansi-underline { text-decoration: underline; }
 
-/* Terminal input prompt row */
+/* ── Starship Prompt Input Row ────────────────────────────────── */
 .terminal-input-row {
   display: flex;
   align-items: center;
-  padding: 4px 8px;
-  background-color: #0d1117;
-  border-top: 1px solid #21262d;
+  padding: 6px 10px;
+  background-color: var(--ob-bg-mantle);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
   flex-shrink: 0;
+  gap: 6px;
 }
 
-.terminal-prompt {
-  color: var(--ob-accent);
-  font-weight: bold;
-  margin-right: 6px;
+.starship-prompt {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
   white-space: nowrap;
+}
+
+.starship-dir {
+  color: var(--ob-accent-teal);
+  font-weight: 700;
+}
+
+.starship-arrow {
+  color: var(--ob-accent-teal);
+  font-weight: 900;
+  margin-right: 2px;
 }
 
 .terminal-input {
@@ -76,37 +90,67 @@
   background: transparent;
   border: none;
   outline: none;
-  color: #f0f6fc;
+  color: var(--ob-text-primary);
   font-family: var(--ob-font-mono);
   font-size: 11.5px;
   padding: 0;
+  caret-color: var(--ob-accent-blue);
 }
 
-/* Cursor */
-.terminal-cursor {
-  display: inline-block;
-  width: 7px;
-  height: 14px;
-  background-color: var(--ob-accent);
-  vertical-align: middle;
-  animation: cursorBlink 1s infinite;
+.terminal-input::placeholder {
+  color: var(--ob-text-dim);
+  font-style: italic;
 }
 
-@keyframes cursorBlink {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
+/* ── On-Screen Quick Touch Keybar (Ergonomic for Q20) ─────────── */
+.terminal-keybar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  background-color: rgba(17, 17, 27, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  flex-shrink: 0;
+  overflow-x: auto;
+  white-space: nowrap;
 }
 
-/* Terminal Bottom Status Bar */
+.keybar-btn {
+  background: var(--ob-bg-surface);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--ob-radius-sm);
+  color: var(--ob-text-primary);
+  font-family: var(--ob-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 7px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  flex-shrink: 0;
+}
+
+.keybar-btn:active {
+  background: var(--ob-accent-blue);
+  color: #11111b;
+  transform: translateY(1px);
+}
+
+.keybar-btn.accent {
+  background: rgba(137, 180, 250, 0.2);
+  border-color: var(--ob-accent-blue);
+  color: var(--ob-accent-blue);
+}
+
+/* ── Terminal Bottom Telemetry Bar ─────────────────────────────── */
 .terminal-status-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 20px;
+  height: 18px;
   padding: 0 8px;
-  background-color: #161b22;
-  border-top: 1px solid #21262d;
-  font-size: 10px;
+  background-color: var(--ob-bg-crust);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 9.5px;
   color: var(--ob-text-muted);
 }
 
@@ -114,6 +158,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  font-weight: 600;
 }
-.term-tag.connected { color: var(--ob-success); }
-.term-tag.disconnected { color: var(--ob-danger); }
+.term-tag.connected { color: var(--ob-accent-green); }
+.term-tag.disconnected { color: var(--ob-accent-red); }

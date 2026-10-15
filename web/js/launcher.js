@@ -1,5 +1,7 @@
 /* OmaBerry App Launcher & Command Palette (Rofi/Fuzzel style)
  * Instant search, keyboard navigation, and application launching
+ * 100% Pure SVG Vector Icons, Zero Unicode Emojis
+ * Tailored for BlackBerry Classic (Q20) physical toolbelt
  */
 
 'use strict';
@@ -20,8 +22,8 @@ window.OB.Launcher = (function () {
       id: 'terminal',
       title: 'Terminal (BerryCore)',
       desc: 'Native QNX POSIX shell & commands',
-      icon: '⌨',
-      badge: 'Alt+T',
+      getIcon: () => window.OB.Icons.terminal,
+      badge: 'Call key',
       workspace: 0,
       action: () => {
         K.emit('action:open-terminal', {});
@@ -31,31 +33,19 @@ window.OB.Launcher = (function () {
       id: 'files',
       title: 'File Manager',
       desc: 'Browse, view and edit files on device',
-      icon: '📁',
-      badge: 'Alt+F',
+      getIcon: () => window.OB.Icons.folder,
+      badge: 'WS 2',
       workspace: 1,
       action: () => {
         K.emit('action:open-files', {});
       }
     },
     {
-      id: 'agent',
-      title: 'AI Agent Hub',
-      desc: 'Connect to Codex, Claude or OpenCode',
-      icon: '🤖',
-      badge: 'Alt+A',
-      workspace: 3,
-      action: () => {
-        K.emit('toast:show', { message: 'Agent Hub starting on port 8120...', type: 'info' });
-        window.open('http://127.0.0.1:8120', '_blank');
-      }
-    },
-    {
       id: 'browser',
       title: 'Berry Browser',
       desc: 'Chromium 120 web browser',
-      icon: '🌐',
-      badge: 'Alt+B',
+      getIcon: () => window.OB.Icons.browser,
+      badge: 'WS 3',
       workspace: 2,
       action: () => {
         K.emit('toast:show', { message: 'Switching to Web workspace', type: 'info' });
@@ -66,18 +56,30 @@ window.OB.Launcher = (function () {
       id: 'sysinfo',
       title: 'System Monitor',
       desc: 'CPU load, RAM usage, processes',
-      icon: '📊',
-      badge: 'Alt+S',
+      getIcon: () => window.OB.Icons.sysinfo,
+      badge: 'WS 4',
       workspace: 3,
       action: () => {
         K.emit('action:toggle-sysinfo', {});
       }
     },
     {
+      id: 'agent',
+      title: 'AI Agent Hub',
+      desc: 'Connect to Codex, Claude or OpenCode',
+      getIcon: () => window.OB.Icons.agent,
+      badge: ':8120',
+      workspace: 3,
+      action: () => {
+        K.emit('toast:show', { message: 'Agent Hub starting on port 8120...', type: 'info' });
+        window.open('http://127.0.0.1:8120', '_blank');
+      }
+    },
+    {
       id: 'qpkg',
       title: 'qpkg Package Manager',
       desc: 'Manage BerryCore CLI packages',
-      icon: '📦',
+      getIcon: () => window.OB.Icons.package,
       badge: 'CLI',
       workspace: 0,
       action: () => {
@@ -91,7 +93,7 @@ window.OB.Launcher = (function () {
       id: 'git',
       title: 'Git Status',
       desc: 'Check git repository status',
-      icon: '🌿',
+      getIcon: () => window.OB.Icons.git,
       badge: 'CLI',
       workspace: 0,
       action: () => {
@@ -105,8 +107,8 @@ window.OB.Launcher = (function () {
       id: 'restart',
       title: 'Reload OmaBerry Shell',
       desc: 'Restart the desktop interface',
-      icon: '🔄',
-      badge: 'Alt+Shift+R',
+      getIcon: () => window.OB.Icons.refresh,
+      badge: 'Reload',
       action: () => {
         location.reload();
       }
@@ -114,25 +116,36 @@ window.OB.Launcher = (function () {
   ];
 
   function open(initialQuery) {
+    if (!overlay) overlay = document.getElementById('launcher-overlay');
     if (!overlay) return;
+    
     overlay.classList.add('open');
     K.setFocus('launcher');
 
     if (inputEl) {
       inputEl.value = initialQuery || '';
       inputEl.focus();
+      setTimeout(() => { try { inputEl.focus(); } catch (e) {} }, 50);
     }
     filterList(inputEl ? inputEl.value : '');
   }
 
   function close() {
+    if (!overlay) overlay = document.getElementById('launcher-overlay');
     if (!overlay) return;
+    
     overlay.classList.remove('open');
     if (inputEl) inputEl.blur();
-    K.setFocus('desktop');
+    
+    const ws = K.getState('workspace', 0);
+    K.setFocus(ws === 0 ? 'terminal' : 'desktop');
+    if (ws === 0) {
+      K.emit('terminal:focus', {});
+    }
   }
 
   function toggle() {
+    if (!overlay) overlay = document.getElementById('launcher-overlay');
     if (overlay && overlay.classList.contains('open')) {
       close();
     } else {
@@ -156,13 +169,14 @@ window.OB.Launcher = (function () {
   }
 
   function renderList() {
+    if (!listEl) listEl = document.getElementById('launcher-results-list');
     if (!listEl) return;
     listEl.innerHTML = '';
 
     if (filteredApps.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'launcher-item';
-      empty.innerHTML = `<span class="launcher-item-desc">No matching applications or commands</span>`;
+      empty.innerHTML = `<span class="launcher-item-desc" style="padding:10px; text-align:center;">No matching applications found</span>`;
       listEl.appendChild(empty);
       return;
     }
@@ -170,9 +184,11 @@ window.OB.Launcher = (function () {
     filteredApps.forEach((app, idx) => {
       const item = document.createElement('div');
       item.className = 'launcher-item' + (idx === selectedIndex ? ' selected' : '');
+      const iconHtml = app.getIcon ? app.getIcon() : (window.OB.Icons.omarchy || '');
+
       item.innerHTML = `
         <div class="launcher-item-left">
-          <div class="launcher-item-icon">${app.icon}</div>
+          <div class="launcher-item-icon">${iconHtml}</div>
           <div class="launcher-item-text">
             <span class="launcher-item-title">${app.title}</span>
             <span class="launcher-item-desc">${app.desc}</span>
@@ -189,7 +205,6 @@ window.OB.Launcher = (function () {
       listEl.appendChild(item);
     });
 
-    // Ensure selected item is scrolled into view
     const selEl = listEl.querySelector('.launcher-item.selected');
     if (selEl) {
       selEl.scrollIntoView({ block: 'nearest' });
@@ -224,6 +239,21 @@ window.OB.Launcher = (function () {
       inputEl.addEventListener('input', (e) => {
         filterList(e.target.value);
       });
+      inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          executeSelected();
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          navigate(1);
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          navigate(-1);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          close();
+        }
+      });
     }
 
     if (overlay) {
@@ -232,33 +262,19 @@ window.OB.Launcher = (function () {
       });
     }
 
-    // Action listeners from Keys engine
-    K.on('action:open-launcher', (data) => {
-      open(data.initialQuery);
-    });
-
+    // Action listeners
+    K.on('action:open-launcher', (data) => open(data ? data.initialQuery : ''));
     K.on('action:close-launcher', () => close());
     K.on('action:toggle-launcher', () => toggle());
-
-    K.on('launcher:nav', (data) => {
-      navigate(data.dir);
-    });
-
-    K.on('launcher:exec-selected', () => {
-      executeSelected();
-    });
-
+    K.on('launcher:nav', (data) => navigate(data.dir));
+    K.on('launcher:exec-selected', () => executeSelected());
     K.on('action:back', () => {
       if (overlay && overlay.classList.contains('open')) {
         close();
       }
     });
 
-    K.register('launcher', {
-      open,
-      close,
-      toggle
-    });
+    K.register('launcher', { open, close, toggle });
   }
 
   return { init, open, close, toggle };

@@ -34,8 +34,8 @@ window.OB.Desktop = (function () {
     // Priority order for physical Back button:
     // 1. Close Command Palette or Launcher if open
     // 2. Close Quick Shade if open
-    // 3. If in Terminal or Fileman focus, unfocus to Desktop
-    // 4. Default: return to Workspace 0
+    // 3. If on workspace > 0, return to Workspace 0 (Terminal)
+    // 4. In Terminal, clear prompt or focus terminal
     const launcher = document.getElementById('launcher-overlay');
     if (launcher && launcher.classList.contains('open')) {
       K.emit('action:close-launcher', {});
@@ -48,17 +48,14 @@ window.OB.Desktop = (function () {
       return;
     }
 
-    const focus = K.getState('focus');
-    if (focus !== 'desktop') {
-      K.setFocus('desktop');
-      showToast('Focus: Desktop', 'info', 1000);
+    if (K.getState('workspace') !== 0) {
+      K.emit('action:switch-workspace', { index: 0 });
+      K.emit('terminal:focus', {});
       return;
     }
 
-    // Already on desktop, if on another workspace, return to 0
-    if (K.getState('workspace') !== 0) {
-      K.emit('action:switch-workspace', { index: 0 });
-    }
+    // Already on Workspace 0
+    K.emit('terminal:focus', {});
   }
 
   function initDock() {

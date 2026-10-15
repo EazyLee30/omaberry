@@ -1,53 +1,47 @@
-/* OmaBerry Design Tokens (Omarchy-inspired)
- * Tailored for BlackBerry Classic / Q20 720x720 Square Display
+/* OmaBerry — Omarchy Quattro Design Tokens
+ * Authentic Catppuccin Mocha / Hyprland Dark System for 720x720 Square Display
  */
 
 :root {
-  /* ── Omarchy Core Palette ─────────────────────────────────────── */
-  --ob-bg-base: #0d1117;
-  --ob-bg-surface: #161b22;
-  --ob-bg-elevated: #21262d;
-  --ob-bg-active: #30363d;
-  --ob-bg-overlay: rgba(13, 17, 23, 0.92);
+  /* ── Omarchy Catppuccin Palette ───────────────────────────────── */
+  --ob-bg-crust: #11111b;       /* Darkest layer / viewport backdrop */
+  --ob-bg-mantle: #181825;      /* Window tiles / Waybar base */
+  --ob-bg-base: #1e1e2e;        /* Cards / Panels / Inputs */
+  --ob-bg-surface: #313244;     /* Elevated items / Hover */
+  --ob-bg-overlay: rgba(17, 17, 27, 0.94);
 
-  /* ── Accent & Semantic Colors ─────────────────────────────────── */
-  --ob-accent: #58a6ff;
-  --ob-accent-hover: #79c0ff;
-  --ob-accent-subtle: rgba(88, 166, 255, 0.15);
-  
-  --ob-success: #3fb950;
-  --ob-warning: #d29922;
-  --ob-danger: #f85149;
-  --ob-purple: #bc8cff;
-  --ob-cyan: #39c5cf;
+  /* ── Omarchy Accents ─────────────────────────────────────────── */
+  --ob-accent-blue: #89b4fa;     /* Omarchy Primary Sapphire */
+  --ob-accent-mauve: #cba6f7;    /* Active gradient secondary */
+  --ob-accent-green: #a6e3a1;    /* Starship prompt / Success */
+  --ob-accent-peach: #fab387;    /* Warning / Alerts */
+  --ob-accent-red: #f38ba8;      /* Danger / Close */
+  --ob-accent-teal: #94e2d5;     /* Cyan highlight */
+  --ob-accent-pink: #f5c2e7;     /* Secondary highlight */
 
-  /* ── Typography & Text Colors ─────────────────────────────────── */
-  --ob-text-primary: #f0f6fc;
-  --ob-text-secondary: #c9d1d9;
-  --ob-text-muted: #8b949e;
-  --ob-text-dim: #484f58;
+  /* ── Text Hierarchy ───────────────────────────────────────────── */
+  --ob-text-primary: #cdd6f4;
+  --ob-text-secondary: #bac2de;
+  --ob-text-muted: #6c7086;
+  --ob-text-dim: #45475a;
 
   --ob-font-mono: 'JetBrainsMono Nerd Font', 'Fira Code', Menlo, Consolas, 'Courier New', monospace;
   --ob-font-ui: -apple-system, 'Slate Pro', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
-  /* ── Sizing & Spacing (Optimized for 720x720) ─────────────────── */
-  --ob-screen-size: 720px;
+  /* ── Sizing & Spacing (720x720 Square) ────────────────────────── */
   --ob-bar-height: 28px;
-  --ob-dock-height: 44px;
-  --ob-border-radius: 8px;
-  --ob-border-radius-sm: 4px;
+  --ob-dock-height: 38px;
   --ob-gap: 6px;
-  --ob-padding: 8px;
+  --ob-radius: 8px;
+  --ob-radius-sm: 5px;
+  --ob-radius-pill: 9999px;
 
-  /* ── Borders & Outlines ───────────────────────────────────────── */
-  --ob-border: 1px solid #30363d;
-  --ob-border-subtle: 1px solid #21262d;
-  --ob-border-active: 1px solid #58a6ff;
-
-  /* ── Shadows & Blur ───────────────────────────────────────────── */
-  --ob-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-  --ob-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.35);
-  --ob-backdrop-blur: blur(10px);
+  /* ── Hyprland Borders & Shadows ───────────────────────────────── */
+  --ob-border-inactive: 1px solid #313244;
+  --ob-border-subtle: 1px solid rgba(255, 255, 255, 0.06);
+  --ob-border-active-gradient: linear-gradient(135deg, #89b4fa, #cba6f7);
+  --ob-shadow-hyprland: 0 4px 18px rgba(0, 0, 0, 0.65);
+  --ob-backdrop-blur: blur(12px);
 }
 
 /* Base reset */
@@ -66,14 +60,26 @@ html, body {
   max-width: 100vw;
   max-height: 100vh;
   overflow: hidden;
-  background-color: var(--ob-bg-base);
-  color: var(--ob-text-secondary);
+  background-color: var(--ob-bg-crust);
+  color: var(--ob-text-primary);
   font-family: var(--ob-font-ui);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.4;
 }
 
-/* Trackpad active cursor display */
-body.trackpad-active {
-  cursor: default;
+/* Vector icon container */
+.icon-svg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+.icon-svg svg {
+  width: 100%;
+  height: 100%;
 }
