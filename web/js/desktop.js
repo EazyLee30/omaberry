@@ -11,7 +11,7 @@ window.OB.Desktop = (function () {
 
   let toastContainer = null;
 
-  function showToast(message, type = 'info', timeoutMs = 3000) {
+  function showToast(message, type = 'info', timeoutMs = 2500) {
     if (!toastContainer) toastContainer = document.getElementById('toast-container');
     if (!toastContainer) return;
 
@@ -31,31 +31,28 @@ window.OB.Desktop = (function () {
   }
 
   function handleBackAction() {
-    // Priority order for physical Back button:
-    // 1. Close Command Palette or Launcher if open
-    // 2. Close Quick Shade if open
-    // 3. If on workspace > 0, return to Workspace 0 (Terminal)
-    // 4. In Terminal, clear prompt or focus terminal
+    // 1. Close Launcher if open
     const launcher = document.getElementById('launcher-overlay');
     if (launcher && launcher.classList.contains('open')) {
       K.emit('action:close-launcher', {});
       return;
     }
 
+    // 2. Close Quick Shade if open
     const shade = document.getElementById('quick-shade');
     if (shade && shade.classList.contains('open')) {
       K.emit('action:toggle-shade', {});
       return;
     }
 
-    if (K.getState('workspace') !== 0) {
+    // 3. If on Workspace > 0, return to Desktop Home (Workspace 0)
+    if (K.getState('workspace', 0) !== 0) {
       K.emit('action:switch-workspace', { index: 0 });
-      K.emit('terminal:focus', {});
       return;
     }
 
-    // Already on Workspace 0
-    K.emit('terminal:focus', {});
+    // Already on Desktop Home
+    showToast('OmaBerry Desktop', 'info', 1000);
   }
 
   function initDock() {
@@ -64,14 +61,18 @@ window.OB.Desktop = (function () {
       item.addEventListener('click', () => {
         const action = item.getAttribute('data-action');
         switch (action) {
+          case 'desktop':
+            K.emit('action:switch-workspace', { index: 0 });
+            break;
           case 'terminal':
-            K.emit('action:toggle-terminal', {});
+            K.emit('action:switch-workspace', { index: 1 });
+            K.emit('terminal:focus', {});
+            break;
+          case 'files':
+            K.emit('action:switch-workspace', { index: 2 });
             break;
           case 'launcher':
             K.emit('action:toggle-launcher', {});
-            break;
-          case 'files':
-            K.emit('action:open-files', {});
             break;
           case 'shade':
             K.emit('action:toggle-shade', {});
@@ -79,38 +80,46 @@ window.OB.Desktop = (function () {
         }
       });
     });
+
+    // Update active state in dock when workspace changes
+    K.on('workspace:changed', (data) => {
+      dockItems.forEach(item => {
+        const action = item.getAttribute('data-action');
+        if (data.to === 0 && action === 'desktop') item.classList.add('active');
+        else if (data.to === 1 && action === 'terminal') item.classList.add('active');
+        else if (data.to === 2 && action === 'files') item.classList.add('active');
+        else item.classList.remove('active');
+      });
+    });
   }
 
   function initToolbelt() {
-    // 1. Green Call Button -> Quick open Terminal
+    // 1. Green Call Button -> Switch to Terminal & Focus
     K.on('action:toolbelt-call', () => {
-      showToast('Call Key: Launching Terminal', 'info');
-      K.emit('action:open-terminal', {});
+      K.emit('action:switch-workspace', { index: 1 });
+      K.emit('terminal:focus', {});
     });
 
-    // 2. Red End Button -> Minimize / Return to clean Desktop
+    // 2. Red End Button -> Return to Desktop Home (Workspace 0)
     K.on('action:toolbelt-end', () => {
-      showToast('End Key: Return to Desktop', 'info');
       K.emit('action:close-launcher', {});
       const shade = document.getElementById('quick-shade');
       if (shade) shade.classList.remove('open');
       K.emit('action:switch-workspace', { index: 0 });
-      K.setFocus('desktop');
     });
 
-    // 3. Menu Button (BlackBerry logo) -> Toggle Launcher or Action Menu
+    // 3. Menu Button (BlackBerry logo) -> Toggle Launcher
     K.on('action:menu', () => {
       K.emit('action:toggle-launcher', {});
     });
 
-    // 4. Back Button (U-turn physical key)
+    // 4. Back Button (U-turn key)
     K.on('action:back', () => {
       handleBackAction();
     });
 
-    // Bottom bezel swipe up -> App overview / Home
-    K.on('action:minimize-to-overview', () => {
-      showToast('Swipe Up: Home Overview', 'info', 1200);
+    // Swipe up
+    K.on('action:swipe-up', () => {
       handleBackAction();
     });
   }
@@ -118,7 +127,7 @@ window.OB.Desktop = (function () {
   function init() {
     toastContainer = document.getElementById('toast-container');
 
-    // Initialize all modules in sequence
+    // Initialize modules in sequence
     window.OB.Keys.init();
     window.OB.StatusBar.init();
     window.OB.Workspace.init();
@@ -133,16 +142,16 @@ window.OB.Desktop = (function () {
       showToast(data.message, data.type, data.timeoutMs);
     });
 
-    // Connect WebSocket & start kernel
+    // Start kernel & connect WebSocket
     K.init();
 
-    showToast('OmaBerry Desktop v0.1 ready (Q20)', 'success', 2500);
+    // Default to Desktop Home
+    window.OB.Workspace.switchWorkspace(0);
   }
 
   return { init, showToast };
 })();
 
-// Auto-boot when DOM ready
 document.addEventListener('DOMContentLoaded', () => {
   window.OB.Desktop.init();
 });
