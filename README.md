@@ -240,7 +240,7 @@ OmaBerry would not exist without the work of these projects and people:
 | [BerryCore](https://github.com/sw7ft/BerryCore) | The Unix-like shell environment running on BB10 |
 | [reberry](https://github.com/EazyLee30/reberry) | Q20 recovery, BerryCore setup and device bring-up |
 | [berrybrowser-cjk](https://github.com/EazyLee30/berrybrowser-cjk) | CJK font patch for Berry Browser |
-| [berrycode](../tree/main/berrycode) | ChatGPT + Codex on BB10 |
+| `berrycode` *(local)* | ChatGPT + Codex running on BB10 |
 
 ## License
 
