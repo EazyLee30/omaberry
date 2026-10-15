@@ -1,0 +1,79 @@
+/* OmaBerry Design Tokens (Omarchy-inspired)
+ * Tailored for BlackBerry Classic / Q20 720x720 Square Display
+ */
+
+:root {
+  /* ── Omarchy Core Palette ─────────────────────────────────────── */
+  --ob-bg-base: #0d1117;
+  --ob-bg-surface: #161b22;
+  --ob-bg-elevated: #21262d;
+  --ob-bg-active: #30363d;
+  --ob-bg-overlay: rgba(13, 17, 23, 0.92);
+
+  /* ── Accent & Semantic Colors ─────────────────────────────────── */
+  --ob-accent: #58a6ff;
+  --ob-accent-hover: #79c0ff;
+  --ob-accent-subtle: rgba(88, 166, 255, 0.15);
+  
+  --ob-success: #3fb950;
+  --ob-warning: #d29922;
+  --ob-danger: #f85149;
+  --ob-purple: #bc8cff;
+  --ob-cyan: #39c5cf;
+
+  /* ── Typography & Text Colors ─────────────────────────────────── */
+  --ob-text-primary: #f0f6fc;
+  --ob-text-secondary: #c9d1d9;
+  --ob-text-muted: #8b949e;
+  --ob-text-dim: #484f58;
+
+  --ob-font-mono: 'JetBrainsMono Nerd Font', 'Fira Code', Menlo, Consolas, 'Courier New', monospace;
+  --ob-font-ui: -apple-system, 'Slate Pro', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  /* ── Sizing & Spacing (Optimized for 720x720) ─────────────────── */
+  --ob-screen-size: 720px;
+  --ob-bar-height: 28px;
+  --ob-dock-height: 44px;
+  --ob-border-radius: 8px;
+  --ob-border-radius-sm: 4px;
+  --ob-gap: 6px;
+  --ob-padding: 8px;
+
+  /* ── Borders & Outlines ───────────────────────────────────────── */
+  --ob-border: 1px solid #30363d;
+  --ob-border-subtle: 1px solid #21262d;
+  --ob-border-active: 1px solid #58a6ff;
+
+  /* ── Shadows & Blur ───────────────────────────────────────────── */
+  --ob-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --ob-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.35);
+  --ob-backdrop-blur: blur(10px);
+}
+
+/* Base reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  max-width: 100vw;
+  max-height: 100vh;
+  overflow: hidden;
+  background-color: var(--ob-bg-base);
+  color: var(--ob-text-secondary);
+  font-family: var(--ob-font-ui);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Trackpad active cursor display */
+body.trackpad-active {
+  cursor: default;
+}

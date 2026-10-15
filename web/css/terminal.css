@@ -1,0 +1,119 @@
+/* OmaBerry Terminal Styles
+ * Monospace ANSI terminal with PTY integration, cursor blink, and status
+ */
+
+.terminal-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background-color: #05070a;
+  color: #c9d1d9;
+  font-family: var(--ob-font-mono);
+  font-size: 11.5px;
+  line-height: 1.35;
+  overflow: hidden;
+  position: relative;
+}
+
+.terminal-output {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 6px 8px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: text;
+  -webkit-user-select: text;
+  scroll-behavior: smooth;
+}
+
+.terminal-line {
+  min-height: 16px;
+}
+
+/* ANSI 16-color palette */
+.ansi-black { color: #484f58; }
+.ansi-red { color: #ff7b72; }
+.ansi-green { color: #3fb950; }
+.ansi-yellow { color: #d29922; }
+.ansi-blue { color: #58a6ff; }
+.ansi-magenta { color: #bc8cff; }
+.ansi-cyan { color: #39c5cf; }
+.ansi-white { color: #f0f6fc; }
+
+.ansi-bright-black { color: #6e7681; }
+.ansi-bright-red { color: #ffa198; }
+.ansi-bright-green { color: #56d364; }
+.ansi-bright-yellow { color: #e3b341; }
+.ansi-bright-blue { color: #79c0ff; }
+.ansi-bright-magenta { color: #d2a8ff; }
+.ansi-bright-cyan { color: #56d4dd; }
+.ansi-bright-white { color: #ffffff; }
+
+.ansi-bold { font-weight: bold; }
+.ansi-underline { text-decoration: underline; }
+
+/* Terminal input prompt row */
+.terminal-input-row {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  background-color: #0d1117;
+  border-top: 1px solid #21262d;
+  flex-shrink: 0;
+}
+
+.terminal-prompt {
+  color: var(--ob-accent);
+  font-weight: bold;
+  margin-right: 6px;
+  white-space: nowrap;
+}
+
+.terminal-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #f0f6fc;
+  font-family: var(--ob-font-mono);
+  font-size: 11.5px;
+  padding: 0;
+}
+
+/* Cursor */
+.terminal-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  background-color: var(--ob-accent);
+  vertical-align: middle;
+  animation: cursorBlink 1s infinite;
+}
+
+@keyframes cursorBlink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+/* Terminal Bottom Status Bar */
+.terminal-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 20px;
+  padding: 0 8px;
+  background-color: #161b22;
+  border-top: 1px solid #21262d;
+  font-size: 10px;
+  color: var(--ob-text-muted);
+}
+
+.term-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.term-tag.connected { color: var(--ob-success); }
+.term-tag.disconnected { color: var(--ob-danger); }

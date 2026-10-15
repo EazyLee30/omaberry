@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0d1117">
+  <title>OmaBerry — BlackBerry Classic Q20</title>
+  
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/desktop.css">
+  <link rel="stylesheet" href="css/terminal.css">
+  <link rel="stylesheet" href="css/launcher.css">
+</head>
+<body>
+
+<div id="desktop-root">
+
+  <!-- ── Top Status Bar (Waybar style) ────────────────────────── -->
+  <header id="statusbar">
+    <div class="status-left">
+      <div class="brand-badge">
+        <span>❖</span>
+        <span>OMA</span>
+      </div>
+      <div class="workspace-pills">
+        <div class="ws-pill active" data-ws="0">1</div>
+        <div class="ws-pill" data-ws="1">2</div>
+        <div class="ws-pill" data-ws="2">3</div>
+        <div class="ws-pill" data-ws="3">4</div>
+      </div>
+    </div>
+
+    <div class="status-center">
+      <span id="status-app-title">Terminal</span>
+    </div>
+
+    <div class="status-right">
+      <div class="status-item" id="status-wifi" title="Wi-Fi">
+        <span>📶</span>
+      </div>
+      <div class="status-item" id="status-battery" title="Battery">
+        <span>100%</span>
+      </div>
+      <div class="status-item accent" id="status-time">
+        12:00
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Quick Shade (Swipe Down from Top Edge) ────────────────── -->
+  <div id="quick-shade">
+    <div style="display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:12px;">
+      <span>Quick Controls</span>
+      <span style="font-size:10px; color:var(--ob-text-muted);">Swipe up or press Back to close</span>
+    </div>
+    <div class="shade-grid">
+      <div class="shade-card active">
+        <span>📶</span>
+        <span>Wi-Fi (Active)</span>
+      </div>
+      <div class="shade-card active">
+        <span>🔒</span>
+        <span>SSH :22 (ON)</span>
+      </div>
+      <div class="shade-card">
+        <span>🤖</span>
+        <span>Agent Hub</span>
+      </div>
+      <div class="shade-card" onclick="location.reload()">
+        <span>🔄</span>
+        <span>Reload Shell</span>
+      </div>
+      <div class="shade-card" onclick="window.OB.Terminal.send('pidin\n')">
+        <span>📊</span>
+        <span>pidin (Top)</span>
+      </div>
+      <div class="shade-card" onclick="window.OB.Terminal.send('qpkg list\n')">
+        <span>📦</span>
+        <span>Packages</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast Notifications ────────────────────────────────────── -->
+  <div id="toast-container"></div>
+
+  <!-- ── Main Viewport (4 Workspaces) ──────────────────────────── -->
+  <main id="viewport">
+
+    <!-- Workspace 0: Terminal / Shell -->
+    <div class="workspace active" id="ws-0">
+      <div class="window-tile focused" data-app="terminal">
+        <div class="window-header">
+          <span class="window-title">⌨ sh (BerryCore)</span>
+          <div class="window-controls">
+            <button class="win-btn min" title="Minimize"></button>
+            <button class="win-btn max" title="Fullscreen"></button>
+            <button class="win-btn close" title="Close"></button>
+          </div>
+        </div>
+        <div class="window-body">
+          <div class="terminal-container">
+            <div class="terminal-output" id="term-output"></div>
+            <div class="terminal-input-row">
+              <span class="terminal-prompt">bb10 #</span>
+              <input type="text" id="term-input" class="terminal-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="type command...">
+              <span class="terminal-cursor"></span>
+            </div>
+            <div class="terminal-status-bar">
+              <div class="term-tag connected" id="term-status-tag">STANDBY</div>
+              <div>Q20 ARMv7 · BerryCore</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Workspace 1: File Manager -->
+    <div class="workspace" id="ws-1">
+      <div class="window-tile" data-app="fileman" style="display:grid; grid-template-rows:24px 30px 1fr;">
+        <div class="window-header">
+          <span class="window-title">📁 BerryFS File Browser</span>
+          <div class="window-controls">
+            <button class="win-btn max"></button>
+            <button class="win-btn close"></button>
+          </div>
+        </div>
+        <div style="background:var(--ob-bg-elevated); padding:4px 8px; border-bottom:var(--ob-border-subtle); display:flex; align-items:center; gap:6px;">
+          <button onclick="window.OB.FileManager.goUp()" style="background:var(--ob-bg-surface); border:var(--ob-border); color:var(--ob-text-primary); border-radius:4px; padding:2px 8px; cursor:pointer;">⬆ Up</button>
+          <span id="fm-path" style="font-family:var(--ob-font-mono); font-size:11px; color:var(--ob-text-muted);">/accounts/1000/shared</span>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; overflow:hidden;">
+          <div id="fm-list" class="launcher-list" style="border-right:var(--ob-border-subtle);"></div>
+          <div style="padding:6px; display:flex; flex-direction:column; background:#05070a;">
+            <div style="font-size:10px; color:var(--ob-text-muted); margin-bottom:4px;">VIEWER / EDITOR</div>
+            <textarea id="fm-viewer" style="flex:1; width:100%; background:transparent; border:none; outline:none; color:#c9d1d9; font-family:var(--ob-font-mono); font-size:11px; resize:none;" readonly placeholder="Select a file to inspect..."></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Workspace 2: Web & Cloud Hub -->
+    <div class="workspace" id="ws-2">
+      <div class="window-tile" data-app="webhub">
+        <div class="window-header">
+          <span class="window-title">🌐 Web & Community Hub</span>
+          <div class="window-controls"><button class="win-btn max"></button></div>
+        </div>
+        <div class="window-body" style="padding:16px; display:flex; flex-direction:column; gap:12px;">
+          <h3 style="color:var(--ob-accent); font-size:14px;">Q20 Web Resources</h3>
+          <p style="font-size:12px; color:var(--ob-text-muted);">Fast access bookmarks for Berry Browser (Chromium 120):</p>
+          <div class="shade-grid" style="grid-template-columns: 1fr 1fr;">
+            <a href="https://github.com/sw7ft/BerryCore" target="_blank" class="shade-card" style="text-decoration:none; color:inherit;">
+              <span>📦</span>
+              <span>BerryCore GitHub</span>
+            </a>
+            <a href="https://bberrylife.github.io/" target="_blank" class="shade-card" style="text-decoration:none; color:inherit;">
+              <span>🫐</span>
+              <span>BerryLife Hub</span>
+            </a>
+            <a href="https://eazylee.xyz/reberry/" target="_blank" class="shade-card" style="text-decoration:none; color:inherit;">
+              <span>📖</span>
+              <span>reberry Journal</span>
+            </a>
+            <a href="http://127.0.0.1:8120" target="_blank" class="shade-card" style="text-decoration:none; color:inherit;">
+              <span>🤖</span>
+              <span>BerryCode AI</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Workspace 3: System Diagnostics & Hardware -->
+    <div class="workspace" id="ws-3">
+      <div class="window-tile" data-app="sysinfo">
+        <div class="window-header">
+          <span class="window-title">📊 Q20 System Diagnostics</span>
+          <div class="window-controls"><button class="win-btn max"></button></div>
+        </div>
+        <div class="window-body" style="padding:12px; font-family:var(--ob-font-mono); font-size:11.5px; line-height:1.5;">
+          <div style="color:var(--ob-accent); font-weight:bold; margin-bottom:6px;">BlackBerry Classic Q20 Hardware Profile:</div>
+          <div>• SoC: Qualcomm Snapdragon S4 Plus (MSM8960)</div>
+          <div>• CPU: Dual-Core Krait @ 1.5 GHz (ARMv7 32-bit)</div>
+          <div>• RAM: 2.0 GB LPDDR2</div>
+          <div>• GPU: Adreno 225</div>
+          <div>• Display: 720 × 720 (1:1 Square Touchscreen)</div>
+          <div>• OS Kernel: BlackBerry QNX 8.0.0 (Neutrino RTOS)</div>
+          <div>• Toolbelt: Optical Trackpad + 4 Navigation Keys</div>
+          <div style="margin-top:12px; padding:8px; background:var(--ob-bg-elevated); border-radius:6px; border:var(--ob-border);">
+            <div style="color:var(--ob-success);">Input Mapping Status:</div>
+            <div>✓ Physical QWERTY keyboard listener active</div>
+            <div>✓ Optical Trackpad motion & click listeners active</div>
+            <div>✓ Bezel gestures (Top/Bottom/Left/Right) calibrated</div>
+            <div>✓ Toolbelt keys (Call, Menu, Back, End) hooked</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── Bottom Dock (Key Hints) ───────────────────────────────── -->
+  <footer id="dock">
+    <div class="dock-item active" data-action="terminal">
+      <span class="dock-icon">⌨</span>
+      <span>Terminal</span>
+      <span class="dock-hint">Alt+T</span>
+    </div>
+    <div class="dock-item" data-action="files">
+      <span class="dock-icon">📁</span>
+      <span>Files</span>
+      <span class="dock-hint">Alt+F</span>
+    </div>
+    <div class="dock-item" data-action="launcher">
+      <span class="dock-icon">🔍</span>
+      <span>Launcher</span>
+      <span class="dock-hint">Alt+L</span>
+    </div>
+    <div class="dock-item" data-action="shade">
+      <span class="dock-icon">⚙</span>
+      <span>Controls</span>
+      <span class="dock-hint">Swipe ▼</span>
+    </div>
+  </footer>
+
+  <!-- ── App Launcher Overlay (Rofi style) ─────────────────────── -->
+  <div id="launcher-overlay">
+    <div class="launcher-card">
+      <div class="launcher-search-box">
+        <span class="launcher-search-icon">🔍</span>
+        <input type="text" id="launcher-search-input" class="launcher-input" placeholder="Search apps or run command..." autocomplete="off">
+      </div>
+      <div id="launcher-results-list" class="launcher-list"></div>
+      <div class="launcher-footer">
+        <div class="launcher-hints">
+          <span><span class="key-hint">↑↓</span>Select</span>
+          <span><span class="key-hint">Enter</span>Open</span>
+          <span><span class="key-hint">Back</span>Close</span>
+        </div>
+        <span>OmaBerry Runner</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Subsystem Scripts ───────────────────────────────────────── -->
+<script src="js/kernel.js"></script>
+<script src="js/keys.js"></script>
+<script src="js/statusbar.js"></script>
+<script src="js/workspace.js"></script>
+<script src="js/launcher.js"></script>
+<script src="js/terminal.js"></script>
+<script src="js/filemanager.js"></script>
+<script src="js/desktop.js"></script>
+
+</body>
+</html>
