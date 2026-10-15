@@ -14,7 +14,7 @@ window.OB = window.OB || {};
 window.OB.Workspace = (function () {
   const K = window.OB.Kernel;
   const TOTAL_WORKSPACES = 5;
-  let currentWorkspace = 0;
+  let currentWorkspace = -1;
   let workspaceEls = [];
 
   function switchWorkspace(index) {

@@ -15,7 +15,9 @@
   background-size: cover;
   background-position: center;
   overflow: hidden;
-  touch-action: manipulation;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /* ── Top Floating Waybar (Omarchy Quickshell Style) ─────────────── */

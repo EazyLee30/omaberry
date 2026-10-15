@@ -49,8 +49,8 @@ window.OB.Keys = (function () {
   };
 
   const GESTURE_CONFIG = {
-    minSwipeDist: 32,  // 32px is responsive on 720x720 3.5-inch screen
-    maxSwipeTime: 850
+    minSwipeDist: 24,  // 24px quick flick on 720x720 3.5-inch screen
+    maxSwipeTime: 800
   };
 
   /* ── Responsive Touch Swiping (Single Thumb / Finger) ──────────── */
@@ -70,6 +70,10 @@ window.OB.Keys = (function () {
       const dx = t.clientX - state.touchStartX;
       const dy = t.clientY - state.touchStartY;
       K.emit('gesture:move', { dx, dy, x: t.clientX, y: t.clientY });
+    }, { passive: true });
+
+    window.addEventListener('touchcancel', function () {
+      state.isSwiping = false;
     }, { passive: true });
 
     window.addEventListener('touchend', function (e) {
