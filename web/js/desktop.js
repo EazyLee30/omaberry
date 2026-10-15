@@ -129,6 +129,8 @@ window.OB.Desktop = (function () {
 
     // Initialize modules in sequence
     window.OB.Keys.init();
+    window.OB.Trackpad.init();
+    window.OB.Meta.init();
     window.OB.StatusBar.init();
     window.OB.Workspace.init();
     window.OB.Launcher.init();

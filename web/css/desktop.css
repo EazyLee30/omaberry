@@ -1,5 +1,10 @@
-/* OmaBerry Desktop Layout — Omarchy Quattro & Hyprland Aesthetic
- * Authentic Catppuccin Mocha desktop for 720x720 Square Touchscreen
+/* OmaBerry desktop layout — Omarchy, transcribed
+ *
+ * Geometry comes from default/hypr/looknfeel.lua and shell/Commons/Style.qml:
+ * corners are square (rounding = 0), the active border is the 45-degree
+ * cyan-to-green gradient, gaps are 5/10, and the groupbar is 22px tall with a
+ * 1px workspace indicator. Anything we had to add for a 3.5-inch screen that
+ * has no pointer and no compositor is marked INVENTED.
  */
 
 #desktop-root {
@@ -8,490 +13,527 @@
   width: 100vw;
   height: 100vh;
   position: relative;
+  /* The Catppuccin waves wallpaper, dimmed so foreground text keeps contrast. */
   background-color: var(--ob-bg-crust);
-  background-image: 
-    linear-gradient(rgba(17, 17, 27, 0.75), rgba(24, 24, 37, 0.90)),
+  background-image:
+    linear-gradient(rgba(17, 17, 27, 0.82), rgba(17, 17, 27, 0.94)),
     url('../assets/2-waves.webp');
   background-size: cover;
   background-position: center;
   overflow: hidden;
   touch-action: none;
-  -webkit-user-select: none;
   user-select: none;
+  -webkit-user-select: none;
 }
 
-/* ── Top Floating Waybar (Omarchy Quickshell Style) ─────────────── */
+/* ══ Groupbar ═══════════════════════════════════════════════════════
+ * looknfeel.lua group.groupbar: height 22, font_size 12 monospace,
+ * indicator_height 1, indicator_gap 5, gaps_in 5,
+ * active rgba(00000040) / inactive rgba(00000020).
+ */
 #statusbar {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
-  height: 30px;
-  margin: 4px 6px 0 6px;
-  padding: 0 8px;
-  background-color: rgba(24, 24, 37, 0.94);
-  backdrop-filter: var(--ob-backdrop-blur);
-  -webkit-backdrop-filter: var(--ob-backdrop-blur);
-  border: 1px solid rgba(137, 180, 250, 0.18);
-  border-radius: var(--ob-radius-pill);
+  height: var(--ob-bar-height);
+  margin: 0;
+  padding: 0 var(--ob-space-xs);
+  background: transparent;
   font-family: var(--ob-font-mono);
-  font-size: 11px;
-  z-index: 100;
+  font-size: var(--ob-bar-font-size);
   flex-shrink: 0;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  z-index: 100;
 }
 
-.status-left, .status-center, .status-right {
+.status-left, .status-right {
   display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.brand-badge {
-  font-weight: 800;
-  color: var(--ob-accent-blue);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
-  padding: 3px 6px;
-  border-radius: var(--ob-radius-sm);
-  transition: all 0.1s ease;
-}
-
-.brand-badge:active {
-  background-color: var(--ob-bg-surface);
-  transform: scale(0.95);
-}
-
-.workspace-pills {
-  display: flex;
-  gap: 3px;
-  background: rgba(17, 17, 27, 0.7);
-  padding: 2px 4px;
-  border-radius: var(--ob-radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.ws-pill {
-  padding: 1px 7px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: transparent;
-  border-radius: 9999px;
-  color: var(--ob-text-muted);
-  font-size: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.12s ease;
-}
-
-.ws-pill.active {
-  background-color: var(--ob-accent-blue);
-  color: #11111b;
-  font-weight: 900;
-  box-shadow: 0 0 8px rgba(137, 180, 250, 0.45);
-}
-
-.ws-pill:active {
-  transform: scale(0.92);
+  align-items: stretch;
+  gap: var(--ob-bar-gap);
 }
 
 .status-center {
-  color: var(--ob-text-primary);
-  font-weight: 600;
+  display: flex;
+  align-items: center;
 }
 
+/* Workspace indicator: a 1px underline, not a pill. */
+.brand-badge {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--ob-space-sm);
+  background: var(--ob-bar-active-bg);
+  color: var(--ob-bar-text);
+  font-weight: var(--ob-bar-weight-active);
+  cursor: pointer;
+  position: relative;
+}
+.brand-badge .icon-svg { width: 12px; height: 12px; color: var(--mocha-text); }
+.brand-badge:active { background: rgba(0, 0, 0, 0.4); }
+
+.workspace-pills {
+  display: flex;
+  gap: var(--ob-bar-indicator-gap);
+  align-items: stretch;
+}
+
+.ws-pill {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--ob-space-md);
+  background: var(--ob-bar-inactive-bg);
+  color: var(--ob-bar-text-inactive);
+  font-weight: var(--ob-bar-weight-inactive);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.12s ease;
+}
+.ws-pill::after {
+  /* indicator_height = 1, indicator_gap = 5 */
+  content: '';
+  position: absolute;
+  left: var(--ob-bar-indicator-gap);
+  right: var(--ob-bar-indicator-gap);
+  bottom: 0;
+  height: var(--ob-bar-indicator);
+  background: transparent;
+}
+.ws-pill.active {
+  background: var(--ob-bar-active-bg);
+  color: var(--ob-bar-text);
+  font-weight: var(--ob-bar-weight-active);
+}
+.ws-pill.active::after {
+  background: var(--ob-bar-text);
+}
+.ws-pill:active { background: rgba(0, 0, 0, 0.35); }
+
 .status-time-pill {
-  background: rgba(49, 50, 68, 0.6);
-  padding: 1px 10px;
-  border-radius: var(--ob-radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  letter-spacing: 0.06em;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--ob-space-md);
+  color: var(--mocha-text);
+  font-variant-numeric: tabular-nums;
 }
 
 .status-item {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: var(--ob-radius-pill);
-  background-color: rgba(49, 50, 68, 0.5);
-  color: var(--ob-text-secondary);
-  font-size: 10px;
+  gap: var(--ob-space-xs);
+  padding: 0 var(--ob-space-sm);
+  background: var(--ob-bar-inactive-bg);
+  color: var(--mocha-text);
 }
+.status-item .icon-svg { width: 11px; height: 11px; }
+.status-item.accent { color: var(--mocha-green); }
+.status-item.offline { color: var(--mocha-overlay0); }
 
-.status-item.accent {
-  color: var(--ob-accent-teal);
-}
+/* ══ Viewport ══════════════════════════════════════════════════════ */
 
-/* ── Workspace Viewport ───────────────────────────────────────── */
 #viewport {
   flex: 1;
   position: relative;
-  display: flex;
-  width: 100%;
   overflow: hidden;
-  padding: 6px;
+  padding: var(--ob-gaps-out) var(--ob-gaps-out) var(--ob-gaps-out);
 }
 
 .workspace {
   position: absolute;
-  top: 4px;
-  left: 6px;
-  right: 6px;
-  bottom: calc(var(--ob-dock-height) + 6px);
-  display: flex;
+  inset: var(--ob-gaps-out);
+  display: none;
   flex-direction: column;
-  opacity: 0;
-  pointer-events: none;
-  transform: scale(0.97);
-  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  gap: var(--ob-gaps-in);
 }
-
 .workspace.active {
-  opacity: 1;
-  pointer-events: auto;
-  transform: scale(1);
+  display: flex;
+  animation: workspace-in 0.18s ease-out;
+}
+@keyframes workspace-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: none; }
 }
 
-/* ── Workspace 0: Omarchy Desktop Home Dashboard ──────────────── */
+/* ══ Desktop home ═══════════════════════════════════════════════════ */
+
 .desktop-home {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  height: 100%;
-  padding: 6px;
-  overflow-y: auto;
-  gap: 8px;
+  gap: var(--ob-gaps-in);
+  min-height: 0;
 }
 
+/* The OMARCHY wordmark, in Mocha text colour, as the centre of gravity. */
 .desktop-hero {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  margin-top: 4px;
+  justify-content: center;
+  gap: var(--ob-space-sm);
+  flex-shrink: 0;
 }
-
-.desktop-hero-logo {
-  height: 28px;
-  filter: invert(1) drop-shadow(0 0 10px rgba(137, 180, 250, 0.5));
+.desktop-logo {
+  width: 260px;
+  max-width: 78%;
+  height: auto;
+  fill: var(--mocha-text);
+  opacity: 0.92;
 }
-
+.desktop-hero-title {
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-title);
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  color: var(--mocha-text);
+}
 .desktop-subtitle {
   font-family: var(--ob-font-mono);
-  font-size: 9.5px;
-  color: var(--ob-accent-teal);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-weight: 700;
+  font-size: var(--ob-font-body-small);
+  letter-spacing: 0.18em;
+  text-indent: 0.18em;
+  color: var(--mocha-overlay0);
 }
 
+/* App grid — every tile is styled as a Hyprland window: square, 2px border,
+ * gradient border when focused. */
 .desktop-grid {
+  flex: 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  width: 100%;
-  max-width: 580px;
+  grid-auto-rows: 1fr;
+  gap: var(--ob-gaps-in);
+  min-height: 0;
 }
 
 .desktop-card {
-  background-color: rgba(30, 30, 46, 0.88);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(137, 180, 250, 0.22);
-  border-radius: var(--ob-radius);
-  padding: 10px 8px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--ob-space-md);
+  padding: 0 var(--ob-space-lg);
+  background: var(--ob-bg-glass);
+  border: var(--ob-border-size) solid transparent;
+  /* Draw the border in the gradient with a background-clip trick, so the
+   * gradient only appears on the 2px edge and not behind the content. */
+  background-image:
+    linear-gradient(var(--ob-bg-mantle), var(--ob-bg-mantle)),
+    var(--ob-border-active);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  border-color: transparent;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
-  transition: all 0.12s ease;
-  min-height: 52px;
+  min-height: 0;
+  overflow: hidden;
+  transition: transform 0.12s ease, background-color 0.12s ease;
 }
-
 .desktop-card:active {
-  transform: scale(0.95);
-  border-color: var(--ob-accent-blue);
+  transform: scale(0.97);
   background-color: var(--ob-bg-surface);
 }
 
 .desktop-card-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgba(17, 17, 27, 0.85);
+  width: var(--ob-menu-icon-col);
+  height: var(--ob-menu-icon-col);
   flex-shrink: 0;
 }
+.desktop-card-icon .icon-svg { width: var(--ob-font-icon-large); height: var(--ob-font-icon-large); }
 
 .desktop-card-text {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  min-width: 0;
+  gap: 1px;
 }
-
 .desktop-card-title {
-  color: var(--ob-text-primary);
-  font-size: 12px;
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-title);
   font-weight: 700;
+  color: var(--mocha-text);
   white-space: nowrap;
 }
-
 .desktop-card-sub {
-  color: var(--ob-text-muted);
-  font-size: 9.5px;
   font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-body-small);
+  color: var(--mocha-overlay0);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.desktop-telemetry {
-  background: rgba(24, 24, 37, 0.88);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: var(--ob-radius-pill);
-  padding: 4px 12px;
-  font-family: var(--ob-font-mono);
-  font-size: 9.5px;
-  color: var(--ob-text-muted);
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-/* ── Hyprland Windows / Tiles ─────────────────────────────────── */
+/* ══ Windows (terminal, files, browser) ═════════════════════════════
+ * A window is a Hyprland client: square corners, 2px border, the
+ * cyan-green gradient when focused and rgba(595959aa) when not.
+ * looknfeel.lua also sets shadow.enabled = false and blur.enabled = false,
+ * so there is deliberately no drop shadow here.
+ */
 .window-tile {
   flex: 1;
-  background-color: var(--ob-bg-mantle);
-  border: 2px solid #313244;
-  border-radius: var(--ob-radius);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.65);
   display: flex;
   flex-direction: column;
+  min-height: 0;
   overflow: hidden;
-  position: relative;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-/* Hyprland active window cyan-green gradient border */
-.window-tile.focused {
-  border: 2px solid transparent;
-  background-image: 
+  background: var(--ob-bg-mantle);
+  border: var(--ob-border-size) solid transparent;
+  background-image:
     linear-gradient(var(--ob-bg-mantle), var(--ob-bg-mantle)),
-    linear-gradient(135deg, #89b4fa, #94e2d5);
+    var(--ob-border-inactive);
   background-origin: border-box;
   background-clip: padding-box, border-box;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.75), 0 0 10px rgba(137, 180, 250, 0.25);
+}
+.window-tile.focused {
+  background-image:
+    linear-gradient(var(--ob-bg-mantle), var(--ob-bg-mantle)),
+    var(--ob-border-active);
 }
 
 .window-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 26px;
-  padding: 0 8px;
-  background-color: rgba(30, 30, 46, 0.95);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  height: var(--ob-bar-height);
+  padding: 0 var(--ob-space-md);
+  background: var(--ob-bg-base);
+  border-bottom: var(--ob-bar-indicator) solid rgba(205, 214, 244, 0.08);
   font-family: var(--ob-font-mono);
-  font-size: 11px;
+  font-size: var(--ob-font-body-small);
+  flex-shrink: 0;
 }
 
 .window-title {
-  color: var(--ob-text-primary);
-  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--ob-space-xs);
+  color: var(--mocha-text);
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .window-dots {
   display: flex;
-  gap: 5px;
   align-items: center;
+  gap: var(--ob-space-sm);
 }
-
 .win-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
+  width: var(--ob-space-md);
+  height: var(--ob-space-md);
   display: inline-block;
   cursor: pointer;
 }
-.win-dot.red { background-color: var(--ob-accent-red); }
-.win-dot.yellow { background-color: var(--ob-accent-peach); }
-.win-dot.green { background-color: var(--ob-accent-green); }
+.win-dot:active { opacity: 0.6; }
+.win-dot.red    { background: var(--mocha-red); }
+.win-dot.yellow { background: var(--mocha-peach); }
+.win-dot.green  { background: var(--mocha-green); }
 
 .window-tag {
-  font-size: 9px;
-  color: var(--ob-text-muted);
-  background: var(--ob-bg-surface);
-  padding: 1px 5px;
-  border-radius: 4px;
+  font-size: var(--ob-font-body-small);
+  color: var(--mocha-overlay0);
 }
 
 .window-body {
   flex: 1;
+  min-height: 0;
   overflow: auto;
   position: relative;
-  background-color: var(--ob-bg-base);
+  background: var(--ob-bg-base);
 }
 
-/* ── Bottom Floating Dock ─────────────────────────────────────── */
-#dock {
-  position: absolute;
-  bottom: 4px;
-  left: 6px;
-  right: 6px;
-  height: var(--ob-dock-height);
-  background-color: rgba(24, 24, 37, 0.94);
-  backdrop-filter: var(--ob-backdrop-blur);
-  -webkit-backdrop-filter: var(--ob-backdrop-blur);
-  border: 1px solid rgba(137, 180, 250, 0.18);
-  border-radius: var(--ob-radius-pill);
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  padding: 0 6px;
-  z-index: 100;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
-}
+/* ══ Quick shade ═══════════════════════════════════════════════════ */
 
-.dock-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  border-radius: var(--ob-radius-pill);
-  background: transparent;
-  color: var(--ob-text-secondary);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.12s ease;
-  min-height: 28px;
-}
-
-.dock-item:active {
-  background-color: var(--ob-bg-surface);
-  color: var(--ob-accent-blue);
-  transform: scale(0.95);
-}
-
-.dock-item.active {
-  background-color: rgba(137, 180, 250, 0.15);
-  color: var(--ob-accent-blue);
-}
-
-.dock-hint {
-  font-family: var(--ob-font-mono);
-  font-size: 8.5px;
-  background: rgba(17, 17, 27, 0.75);
-  padding: 1px 4px;
-  border-radius: 4px;
-  color: var(--ob-text-muted);
-}
-
-/* ── Top Swipe Shade (Quick Controls) ─────────────────────────── */
 #quick-shade {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  max-height: 290px;
-  background-color: rgba(24, 24, 37, 0.98);
-  backdrop-filter: var(--ob-backdrop-blur);
-  border-bottom: 2px solid var(--ob-accent-blue);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+  z-index: 300;
+  background: var(--ob-bg-overlay);
+  border-bottom: var(--ob-border-size) solid rgba(89, 89, 89, 0.667);
+  padding: var(--ob-gaps-in) var(--ob-gaps-out) var(--ob-gaps-out);
   transform: translateY(-100%);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 200;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  transition: transform 0.2s ease-out;
+  display: none;
 }
-
 #quick-shade.open {
-  transform: translateY(0);
+  display: block;
+  transform: none;
 }
 
 .shade-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ob-gaps-in);
+  margin-top: var(--ob-space-sm);
+}
+.shade-card {
+  display: flex;
+  align-items: center;
+  gap: var(--ob-space-sm);
+  padding: var(--ob-space-sm);
+  background: var(--ob-bg-base);
+  color: var(--mocha-text);
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-body-small);
+  cursor: pointer;
+}
+.shade-card .icon-svg { width: 14px; height: 14px; }
+.shade-card:active { background: var(--ob-bg-surface); }
+
+/* ══ Dock ═══════════════════════════════════════════════════════════
+ * INVENTED — Omarchy has no dock; its launcher is the menu. Kept because a
+ * physical-keyboard device needs always-reachable targets.
+ */
+#dock {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: var(--ob-gaps-in);
+  height: var(--ob-dock-height);
+  padding: 0 var(--ob-gaps-out);
+  flex-shrink: 0;
+  z-index: 100;
 }
 
-.shade-card {
-  background-color: var(--ob-bg-base);
-  border: 1px solid var(--ob-border-inactive);
-  border-radius: var(--ob-radius);
-  padding: 10px 8px;
+.dock-item {
+  display: flex;
+  align-items: center;
+  gap: var(--ob-space-xs);
+  padding: 0 var(--ob-space-md);
+  background: var(--ob-bar-inactive-bg);
+  color: var(--mocha-subtext0);
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-body-small);
+  cursor: pointer;
+}
+.dock-item.active {
+  background: var(--ob-bar-active-bg);
+  color: var(--mocha-text);
+  font-weight: 700;
+}
+.dock-item:active { background: rgba(0, 0, 0, 0.35); }
+.dock-item .icon-svg { width: 13px; height: 13px; }
+.dock-key {
+  font-size: var(--ob-font-body-small);
+  color: var(--mocha-overlay0);
+}
+.dock-hint {
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-body-small);
+  padding: 0 var(--ob-space-xs);
+  background: var(--ob-bg-mantle);
+  color: var(--mocha-overlay0);
+}
+
+/* ══ Toasts ════════════════════════════════════════════════════════ */
+
+#toast-container {
+  position: absolute;
+  bottom: calc(var(--ob-dock-height) + var(--ob-gaps-out));
+  left: 0;
+  right: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--ob-text-secondary);
-  cursor: pointer;
-  transition: all 0.12s ease;
-  min-height: 60px;
-  justify-content: center;
-}
-
-.shade-card:active {
-  background-color: var(--ob-bg-surface);
-  border-color: var(--ob-accent-blue);
-  transform: scale(0.95);
-}
-
-.shade-card.active {
-  border-color: var(--ob-accent-blue);
-  background-color: rgba(137, 180, 250, 0.12);
-  color: var(--ob-accent-blue);
-}
-
-/* ── Toast Notifications ──────────────────────────────────────── */
-#toast-container {
-  position: absolute;
-  top: calc(var(--ob-bar-height) + 10px);
-  right: 12px;
-  left: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  z-index: 300;
+  gap: var(--ob-space-xs);
+  z-index: 400;
   pointer-events: none;
 }
-
 .toast {
-  background-color: rgba(30, 30, 46, 0.96);
-  border-left: 3px solid var(--ob-accent-blue);
-  border-radius: var(--ob-radius-sm);
-  padding: 8px 12px;
-  font-size: 11.5px;
-  color: var(--ob-text-primary);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
-  animation: toastIn 0.2s ease forwards;
-  pointer-events: auto;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: var(--ob-space-xs) var(--ob-space-md);
+  background: var(--mocha-surface0);
+  border-left: var(--ob-space-xxs) solid var(--mocha-blue);
+  color: var(--mocha-text);
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-body-small);
+  animation: toast-in 0.16s ease-out;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
 }
 
-.toast.warn { border-left-color: var(--ob-accent-peach); }
-.toast.error { border-left-color: var(--ob-accent-red); }
-.toast.success { border-left-color: var(--ob-accent-green); }
+/* ══ Meta layer + composer ═══════════════════════════════════════ */
 
-@keyframes toastIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+.meta-hints {
+  position: absolute;
+  top: var(--ob-bar-height);
+  left: 0;
+  right: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ob-space-md);
+  padding: var(--ob-space-xs) var(--ob-space-md);
+  background: rgba(0, 255, 153, 0.14);   /* green = the armed layer */
+  border-bottom: var(--ob-bar-indicator) solid rgba(0, 255, 153, 0.5);
+  color: var(--mocha-text);
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-body-small);
+  z-index: 350;
 }
+body.meta-armed .meta-hints { display: flex; }
+.meta-hints b {
+  background: var(--mocha-green);
+  color: var(--mocha-crust);
+  padding: 0 var(--ob-space-xs);
+}
+
+#ime-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--ob-dock-height);
+  display: none;
+  flex-direction: column;
+  gap: var(--ob-space-xs);
+  padding: var(--ob-space-md) var(--ob-space-lg);
+  background: var(--ob-bg-overlay);
+  border-top: var(--ob-border-size) solid transparent;
+  background-image:
+    linear-gradient(var(--ob-bg-mantle), var(--ob-bg-mantle)),
+    var(--ob-border-active);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  z-index: 360;
+}
+#ime-bar.open { display: flex; }
+
+.ime-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ob-space-md);
+}
+.ime-pinyin {
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-subtitle);
+  color: var(--mocha-teal);
+}
+.ime-candidate {
+  font-size: var(--ob-font-display);
+  line-height: 1.1;
+  color: var(--mocha-text);
+}
+.ime-count {
+  margin-left: auto;
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-body-small);
+  color: var(--mocha-overlay0);
+}
+.ime-candidates {
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-subtitle);
+  color: var(--mocha-subtext0);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.ime-foot {
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-body-small);
+  color: var(--mocha-overlay0);
+}
+
+/* ══ Trackpad cursor ═══════════════════════════════════════════════ */
+
+body.trackpad-active #desktop-root { cursor: none; }

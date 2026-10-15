@@ -39,7 +39,12 @@ class PtyBridge {
       TERM: 'xterm-256color',
       HOME: process.env.HOME || '/accounts/1000/shared',
       PATH: process.env.PATH || '/accounts/1000/shared/misc/berrycore/bin:/bin:/usr/bin:/usr/sbin',
-      BERRYCORE_QUIET: '1'
+      BERRYCORE_QUIET: '1',
+      // The IME in web/js/meta.js writes composed Chinese as UTF-8 down this
+      // PTY. Without a UTF-8 locale the shell treats the bytes as binary and
+      // tools like ls or cat mangle them back to mojibake.
+      LANG: process.env.LANG || 'en_US.UTF-8',
+      LC_ALL: process.env.LC_ALL || 'en_US.UTF-8'
     });
 
     try {

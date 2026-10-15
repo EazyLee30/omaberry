@@ -1,23 +1,26 @@
-/* OmaBerry App Launcher & Command Palette — Rofi / Walker Aesthetic
- * Catppuccin Mocha theme, keyboard-first navigation for Q20 720x720 display
+/* OmaBerry menu — Omarchy's menu, transcribed
+ *
+ * Shapes and metrics come from shell/plugins/menu/Menu.qml:
+ *   card width        Style.space(300)
+ *   icon column       36px, icon glyph 18px
+ *   row cursor        a 4px bar on the leading edge
+ *   row text          title + bodySmall description
+ *   corners           0 -- Style.qml cornerRadius mirrors Hyprland rounding
+ *
+ * The frosted fill and the animation are ours: QNX Skia has no real blur.
  */
 
 #launcher-overlay, #palette-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(17, 17, 27, 0.85);
-  backdrop-filter: var(--ob-backdrop-blur);
-  -webkit-backdrop-filter: var(--ob-backdrop-blur);
+  inset: 0;
+  background: rgba(17, 17, 27, 0.72);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 250;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.12s ease;
 }
 
 #launcher-overlay.open, #palette-overlay.open {
@@ -26,158 +29,211 @@
 }
 
 .launcher-card {
-  width: calc(100% - 24px);
-  max-width: 580px;
-  max-height: 520px;
-  background-color: var(--ob-bg-mantle);
-  border: 2px solid var(--ob-accent-blue);
-  border-radius: var(--ob-radius);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 16px rgba(137, 180, 250, 0.2);
+  width: calc(100% - 2 * var(--ob-gaps-out));
+  max-width: 460px;
+  max-height: 560px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transform: translateY(-8px) scale(0.98);
-  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  background: var(--ob-bg-glass);
+  border: var(--ob-border-size) solid transparent;
+  background-image:
+    linear-gradient(var(--ob-bg-mantle), var(--ob-bg-mantle)),
+    var(--ob-border-active);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  animation: menu-in 0.14s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-#launcher-overlay.open .launcher-card,
-#palette-overlay.open .launcher-card {
-  transform: translateY(0) scale(1);
+@keyframes menu-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.99); }
+  to   { opacity: 1; transform: none; }
 }
+
+/* ── Search line (FilterInput) ─────────────────────────────────── */
 
 .launcher-search-box {
   display: flex;
   align-items: center;
-  padding: 10px 12px;
-  background-color: var(--ob-bg-base);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  gap: 8px;
+  gap: var(--ob-space-sm);
+  padding: var(--ob-space-md) var(--ob-space-lg);
+  background: var(--ob-bg-base);
+  border-bottom: var(--ob-bar-indicator) solid rgba(205, 214, 244, 0.08);
+  flex-shrink: 0;
 }
 
 .launcher-search-icon {
-  color: var(--ob-accent-teal);
-  font-weight: 900;
-  font-size: 14px;
+  color: var(--mocha-teal);
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-subtitle);
+  font-weight: 700;
 }
 
-.launcher-input {
+.launcher-search-input {
   flex: 1;
+  min-width: 0;
   background: transparent;
   border: none;
   outline: none;
-  color: var(--ob-text-primary);
-  font-family: var(--ob-font-ui);
-  font-size: 13px;
-  caret-color: var(--ob-accent-blue);
+  color: var(--mocha-text);
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-subtitle);
+  user-select: text;
+  -webkit-user-select: text;
 }
+.launcher-search-input::placeholder { color: var(--mocha-overlay0); }
 
-.launcher-input::placeholder {
-  color: var(--ob-text-dim);
-}
+/* ── Rows ──────────────────────────────────────────────────────── */
 
 .launcher-list {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+  padding: var(--ob-space-xxs) 0;
 }
 
 .launcher-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 6px 10px;
-  border-radius: var(--ob-radius-sm);
-  background-color: transparent;
+  gap: var(--ob-space-sm);
+  padding: var(--ob-space-sm) var(--ob-space-lg) var(--ob-space-sm) var(--ob-space-sm);
+  border-left: var(--ob-menu-cursor) solid transparent;
   cursor: pointer;
-  transition: all 0.1s ease;
-  border: 1px solid transparent;
+  color: var(--mocha-text);
 }
-
-.launcher-item.selected, .launcher-item:hover {
-  background-color: var(--ob-bg-surface);
-  border-color: var(--ob-accent-blue);
+.launcher-item.selected {
+  background: var(--mocha-surface0);
+  border-left-color: var(--mocha-teal);
 }
+.launcher-item:active { background: var(--mocha-surface1); }
 
+/* 36px icon column, 18px glyph — Menu.qml sets both explicitly. The row is
+ * icon + (title over description) on the left, key hint on the right. */
 .launcher-item-left {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  overflow: hidden;
-}
-
-.launcher-item-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--ob-bg-base);
-  color: var(--ob-accent-blue);
-  flex-shrink: 0;
+  gap: var(--ob-space-sm);
 }
 
 .launcher-item-text {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  gap: 1px;
 }
 
-.launcher-item-title {
-  color: var(--ob-text-primary);
-  font-weight: 600;
-  font-size: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.launcher-item-desc {
-  color: var(--ob-text-muted);
-  font-size: 10px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.launcher-item-badge {
-  font-family: var(--ob-font-mono);
-  font-size: 9.5px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background-color: var(--ob-bg-base);
-  color: var(--ob-text-muted);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+.launcher-item-icon {
+  width: var(--ob-menu-icon-col);
+  height: var(--ob-menu-icon-col);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
+.launcher-item-icon .icon-svg {
+  width: var(--ob-font-icon-large);
+  height: var(--ob-font-icon-large);
+}
+
+.launcher-item-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.launcher-item-title {
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-title);
+  font-weight: 500;
+  color: var(--mocha-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.launcher-item-sub {
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-body-small);
+  color: var(--mocha-overlay0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.launcher-item.selected .launcher-item-title { color: var(--mocha-text); }
+
+/* Right-hand key hint, like Menu.qml's trailing detail text. */
+.launcher-item-key {
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-body-small);
+  color: var(--mocha-overlay0);
+  padding: 1px var(--ob-space-xs);
+  background: var(--mocha-base);
+  flex-shrink: 0;
+}
+
+/* ── Footer keybindings (PanelKeyCatcher) ──────────────────────── */
 
 .launcher-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 6px 12px;
-  background-color: var(--ob-bg-base);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  gap: var(--ob-space-md);
+  padding: var(--ob-space-xs) var(--ob-space-lg);
+  background: var(--ob-bg-base);
+  border-top: var(--ob-bar-indicator) solid rgba(205, 214, 244, 0.08);
   font-family: var(--ob-font-mono);
-  font-size: 9.5px;
-  color: var(--ob-text-muted);
+  font-size: var(--ob-font-body-small);
+  color: var(--mocha-overlay0);
+  flex-shrink: 0;
 }
-
-.launcher-hints {
-  display: flex;
-  gap: 10px;
-}
-
-.key-hint {
-  display: inline-block;
-  padding: 1px 4px;
-  border-radius: 3px;
-  background-color: var(--ob-bg-surface);
-  color: var(--ob-accent-teal);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  margin-right: 3px;
+.launcher-footer b {
+  color: var(--mocha-text);
+  background: var(--mocha-surface0);
+  padding: 0 var(--ob-space-xs);
   font-weight: 700;
+}
+
+.launcher-empty {
+  padding: var(--ob-space-xl);
+  text-align: center;
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-body);
+  color: var(--mocha-overlay0);
+}
+
+/* ── Command palette ───────────────────────────────────────────── */
+
+.palette-card { max-width: 520px; }
+.palette-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--mocha-text);
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-subtitle);
+  user-select: text;
+  -webkit-user-select: text;
+}
+.palette-results {
+  max-height: 320px;
+  overflow-y: auto;
+  margin-top: var(--ob-space-sm);
+}
+.palette-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ob-space-sm);
+  padding: var(--ob-space-sm) var(--ob-space-md);
+  border-left: var(--ob-menu-cursor) solid transparent;
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-body);
+  color: var(--mocha-text);
+  cursor: pointer;
+}
+.palette-row.selected {
+  background: var(--mocha-surface0);
+  border-left-color: var(--mocha-teal);
 }

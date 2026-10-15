@@ -110,6 +110,12 @@ window.OB.Workspace = (function () {
     K.on('action:workspace-next', () => nextWorkspace());
     K.on('action:workspace-prev', () => prevWorkspace());
 
+    // The trackpad engine emits its own pair of events so that a horizontal
+    // flick and a swipe cannot be confused with the keyboard shortcuts.
+    K.on('trackpad:workspace-next', () => nextWorkspace());
+    K.on('trackpad:workspace-prev', () => prevWorkspace());
+    K.on('trackpad:activate', () => focusWindow());
+
     K.on('action:toggle-fullscreen', () => {
       toggleFullscreen();
     });

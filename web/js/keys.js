@@ -45,7 +45,8 @@ window.OB.Keys = (function () {
     touchStartX: 0,
     touchStartY: 0,
     touchStartTime: 0,
-    isSwiping: false
+    isSwiping: false,
+    swipeConsumed: false
   };
 
   const GESTURE_CONFIG = {
@@ -53,66 +54,122 @@ window.OB.Keys = (function () {
     maxSwipeTime: 800
   };
 
-  /* ── Responsive Touch Swiping (Single Thumb / Finger) ──────────── */
+  /* ── Swipe Decision (shared by the touch and mouse paths) ─────────
+   * QNX's content_shell reports a tap on the screen as a *mouse* event:
+   * `ontouchstart` does not exist there, so a touch-only handler can never
+   * fire and every gesture silently dies. Both paths therefore call these
+   * three helpers rather than re-deriving the same rule.
+   */
+  function beginSwipe(x, y) {
+    state.touchStartX = x;
+    state.touchStartY = y;
+    state.touchStartTime = Date.now();
+    state.isSwiping = true;
+    state.swipeConsumed = false;
+  }
+
+  function moveSwipe(x, y) {
+    if (!state.isSwiping) return;
+    const dx = x - state.touchStartX;
+    const dy = y - state.touchStartY;
+    // Past the threshold this is a drag, not a tap -- used to swallow the
+    // click the browser still fires after a mouse swipe.
+    if (!state.swipeConsumed &&
+        Math.max(Math.abs(dx), Math.abs(dy)) >= GESTURE_CONFIG.minSwipeDist) {
+      state.swipeConsumed = true;
+    }
+    K.emit('gesture:move', { dx: dx, dy: dy, x: x, y: y });
+  }
+
+  function endSwipe(x, y) {
+    if (!state.isSwiping) return false;
+    state.isSwiping = false;
+
+    const duration = Date.now() - state.touchStartTime;
+    if (duration > GESTURE_CONFIG.maxSwipeTime) return false;
+
+    const dx = x - state.touchStartX;
+    const dy = y - state.touchStartY;
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+
+    // 1. Horizontal swipe across workspaces (Left = Next, Right = Prev)
+    if (absX >= GESTURE_CONFIG.minSwipeDist && absX > absY) {
+      K.emit(dx < 0 ? 'action:workspace-next' : 'action:workspace-prev',
+             { source: 'swipe' });
+      return true;
+    }
+
+    // 2. Vertical swipe down from the upper screen -> Quick Controls
+    if (dy >= GESTURE_CONFIG.minSwipeDist && dy > absX && state.touchStartY < 360) {
+      K.emit('action:toggle-shade', { source: 'swipe-down' });
+      return true;
+    }
+
+    // 3. Vertical swipe up -> close the shade / go back
+    if (dy <= -GESTURE_CONFIG.minSwipeDist && absY > absX) {
+      K.emit('action:back', { source: 'swipe-up' });
+      return true;
+    }
+    return false;
+  }
+
+  function cancelSwipe() {
+    state.isSwiping = false;
+  }
+
+  /* ── Responsive Swiping (Single Thumb / Finger) ──────────── */
   function initTouchGestures() {
+    const hasTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
     window.addEventListener('touchstart', function (e) {
-      if (e.touches.length === 0) return;
+      if (!e.touches || e.touches.length === 0) return;
       const t = e.touches[0];
-      state.touchStartX = t.clientX;
-      state.touchStartY = t.clientY;
-      state.touchStartTime = Date.now();
-      state.isSwiping = true;
+      beginSwipe(t.clientX, t.clientY);
     }, { passive: true });
 
     window.addEventListener('touchmove', function (e) {
-      if (!state.isSwiping || e.touches.length === 0) return;
+      if (!e.touches || e.touches.length === 0) return;
       const t = e.touches[0];
-      const dx = t.clientX - state.touchStartX;
-      const dy = t.clientY - state.touchStartY;
-      K.emit('gesture:move', { dx, dy, x: t.clientX, y: t.clientY });
+      moveSwipe(t.clientX, t.clientY);
     }, { passive: true });
 
-    window.addEventListener('touchcancel', function () {
-      state.isSwiping = false;
-    }, { passive: true });
+    window.addEventListener('touchcancel', cancelSwipe, { passive: true });
 
     window.addEventListener('touchend', function (e) {
-      if (!state.isSwiping) return;
-      state.isSwiping = false;
-
-      const duration = Date.now() - state.touchStartTime;
-      if (duration > GESTURE_CONFIG.maxSwipeTime) return;
-
-      const changed = e.changedTouches[0];
+      const changed = e.changedTouches && e.changedTouches[0];
       if (!changed) return;
+      if (endSwipe(changed.clientX, changed.clientY)) e.preventDefault();
+    }, { passive: false });
 
-      const dx = changed.clientX - state.touchStartX;
-      const dy = changed.clientY - state.touchStartY;
-      const absX = Math.abs(dx);
-      const absY = Math.abs(dy);
+    /* Mouse path -- the one that actually fires on the Q20 build. */
+    window.addEventListener('mousedown', function (e) {
+      if (e.button !== 0) return;
+      if (hasTouch && state.isSwiping) return; // touch already owns this drag
+      beginSwipe(e.clientX, e.clientY);
+    }, true);
 
-      // 1. Horizontal swipe across workspaces (Left = Next, Right = Prev)
-      if (absX >= GESTURE_CONFIG.minSwipeDist && absX > absY) {
-        if (dx < 0) {
-          K.emit('action:workspace-next', { source: 'touch-swipe' });
-        } else {
-          K.emit('action:workspace-prev', { source: 'touch-swipe' });
-        }
-        return;
-      }
-
-      // 2. Vertical swipe down from upper half of screen -> Pull down Quick Controls
-      if (dy >= GESTURE_CONFIG.minSwipeDist && dy > absX && state.touchStartY < 320) {
-        K.emit('action:toggle-shade', { source: 'swipe-down' });
-        return;
-      }
-
-      // 3. Vertical swipe up from lower screen -> Close shade or return to Desktop
-      if (dy <= -GESTURE_CONFIG.minSwipeDist && Math.abs(dy) > absX) {
-        K.emit('action:back', { source: 'swipe-up' });
-        return;
-      }
+    window.addEventListener('mousemove', function (e) {
+      if (!state.isSwiping) return;
+      moveSwipe(e.clientX, e.clientY);
     }, { passive: true });
+
+    window.addEventListener('mouseup', function (e) {
+      if (e.button !== 0) return;
+      if (endSwipe(e.clientX, e.clientY)) {
+        // The browser still emits `click` after this drag; cancel it so a
+        // workspace swipe never also activates whatever was under the finger.
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
+
+    window.addEventListener('click', function (e) {
+      if (!state.swipeConsumed) return;
+      e.preventDefault();
+      e.stopPropagation();
+      state.swipeConsumed = false;
+    }, true);
   }
 
   /* ── Physical Toolbelt Handler (5 Keys) ────────────────────────── */
