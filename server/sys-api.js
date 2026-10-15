@@ -13,12 +13,13 @@ function getMetrics() {
   const memFreeMb = Math.round(freeMem / (1024 * 1024));
   const memTotalMb = Math.round(totalMem / (1024 * 1024));
 
-  const cpus = os.cpus ? os.cpus() : [];
-  let cpuCount = cpus.length || 2;
-
-  // Approximate load average or cpu usage
-  const loadAvg = os.loadavg ? os.loadavg() : [0.5, 0.4, 0.3];
-  const cpuPercent = Math.min(100, Math.round((loadAvg[0] / cpuCount) * 100));
+  // Q20 is Dual-Core Qualcomm Krait; avoid os.cpus() which triggers QNX libuv _SYSPAGE_ELEMENT_SIZE
+  const cpuCount = 2;
+  let cpuPercent = 15;
+  try {
+    const loadAvg = os.loadavg ? os.loadavg() : [0.3, 0.2, 0.1];
+    cpuPercent = Math.min(100, Math.round((loadAvg[0] / cpuCount) * 100)) || 15;
+  } catch (e) {}
 
   return {
     type: 'sysinfo',

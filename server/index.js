@@ -16,7 +16,7 @@ const fsApi = require('./fs-api');
 const sysApi = require('./sys-api');
 
 const PORT = parseInt(process.env.OMABERRY_PORT || '9820', 10);
-const HOST = process.env.OMABERRY_HOST || '127.0.0.1';
+const HOST = process.env.OMABERRY_HOST || '0.0.0.0';
 const WEB_DIR = path.resolve(__dirname, '../web');
 
 const MIME_TYPES = {

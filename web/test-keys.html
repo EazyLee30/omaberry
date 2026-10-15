@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>OmaBerry Q20 Hardware & Keys Diagnostic</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d1117;
+      color: #c9d1d9;
+      font-family: -apple-system, monospace;
+      font-size: 12px;
+      padding: 10px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow: hidden;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid #30363d;
+      padding-bottom: 6px;
+    }
+    h1 { font-size: 14px; color: #58a6ff; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+    }
+    .btn-indicator {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 8px 4px;
+      text-align: center;
+      font-weight: bold;
+      color: #8b949e;
+      transition: all 0.1s ease;
+    }
+    .btn-indicator.active {
+      background: #238636;
+      color: #fff;
+      border-color: #3fb950;
+      transform: scale(0.96);
+    }
+    .toolbelt {
+      background: #21262d;
+      padding: 6px;
+      border-radius: 8px;
+    }
+    .toolbelt-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: #8b949e;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+    .live-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .log-box {
+      flex: 1;
+      background: #010409;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 8px;
+      overflow-y: auto;
+      font-family: Menlo, monospace;
+      font-size: 11px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Q20 Hardware Input Diagnostic</h1>
+    <span id="screen-info">720x720</span>
+  </header>
+
+  <!-- Physical Toolbelt Visualizer -->
+  <div class="toolbelt">
+    <div class="toolbelt-title">BlackBerry Q20 Physical Toolbelt (5 Buttons)</div>
+    <div class="grid">
+      <div id="btn-call" class="btn-indicator">CALL 📞</div>
+      <div id="btn-menu" class="btn-indicator">MENU 🍇</div>
+      <div id="btn-trackpad" class="btn-indicator">TRACKPAD ⨀</div>
+      <div id="btn-back" class="btn-indicator">BACK ↩</div>
+      <div id="btn-end" class="btn-indicator">END 🔴</div>
+    </div>
+  </div>
+
+  <!-- Real-time Modifiers & Trackpad Display -->
+  <div class="live-card">
+    <div style="display:flex; justify-content:space-between;">
+      <span>Modifiers: <b id="mod-alt">ALT</b> | <b id="mod-shift">SHIFT</b> | <b id="mod-ctrl">CTRL</b></span>
+      <span>Trackpad: <span id="tp-pos">0, 0</span></span>
+    </div>
+    <div style="display:flex; justify-content:space-between;">
+      <span>Last Key: <b id="last-key" style="color:#58a6ff;">None</b></span>
+      <span>Gesture: <b id="last-gesture" style="color:#3fb950;">None</b></span>
+    </div>
+  </div>
+
+  <!-- Raw Event Log -->
+  <div class="log-box" id="log-output">Listening for physical keyboard, trackpad, toolbelt, and touch events...
+</div>
+
+  <script src="../web/js/kernel.js"></script>
+  <script src="../web/js/keys.js"></script>
+  <script>
+    const logEl = document.getElementById('log-output');
+    const lastKeyEl = document.getElementById('last-key');
+    const lastGestureEl = document.getElementById('last-gesture');
+    const tpPosEl = document.getElementById('tp-pos');
+    const modAlt = document.getElementById('mod-alt');
+    const modShift = document.getElementById('mod-shift');
+    const modCtrl = document.getElementById('mod-ctrl');
+
+    function log(msg) {
+      const time = new Date().toISOString().substring(11, 19);
+      logEl.textContent = `[${time}] ${msg}\n` + logEl.textContent;
+    }
+
+    function flash(elId) {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      el.classList.add('active');
+      setTimeout(() => el.classList.remove('active'), 250);
+    }
+
+    // Initialize Keys Engine
+    window.OB.Keys.init();
+
+    // Hook Toolbelt actions
+    window.OB.Kernel.on('action:toolbelt-call', (e) => {
+      flash('btn-call');
+      log(`[TOOLBELT] Call pressed: ${JSON.stringify(e)}`);
+    });
+
+    window.OB.Kernel.on('action:menu', (e) => {
+      flash('btn-menu');
+      log(`[TOOLBELT] Menu pressed: ${JSON.stringify(e)}`);
+    });
+
+    window.OB.Kernel.on('action:trackpad-click', (e) => {
+      flash('btn-trackpad');
+      log(`[TRACKPAD] Click center pressed`);
+    });
+
+    window.OB.Kernel.on('action:back', (e) => {
+      flash('btn-back');
+      log(`[TOOLBELT] Back button triggered: ${JSON.stringify(e)}`);
+    });
+
+    window.OB.Kernel.on('action:toolbelt-end', (e) => {
+      flash('btn-end');
+      log(`[TOOLBELT] End / Hang up pressed: ${JSON.stringify(e)}`);
+    });
+
+    // Trackpad movement
+    window.OB.Kernel.on('trackpad:move', (e) => {
+      tpPosEl.textContent = `${e.x}, ${e.y}`;
+    });
+
+    window.OB.Kernel.on('trackpad:wheel', (e) => {
+      log(`[TRACKPAD] Wheel scroll: dx=${e.deltaX} dy=${e.deltaY}`);
+    });
+
+    // Touch Bezel Gestures
+    window.OB.Kernel.on('action:toggle-shade', (e) => {
+      lastGestureEl.textContent = 'Top Swipe (Shade)';
+      log(`[GESTURE] Top bezel swipe down detected`);
+    });
+
+    window.OB.Kernel.on('action:minimize-to-overview', (e) => {
+      lastGestureEl.textContent = 'Bottom Swipe (Overview)';
+      log(`[GESTURE] Bottom bezel swipe up detected`);
+    });
+
+    window.OB.Kernel.on('action:open-launcher', (e) => {
+      lastGestureEl.textContent = 'Left Bezel Swipe (Launcher)';
+      log(`[GESTURE] Left bezel swipe right`);
+    });
+
+    window.OB.Kernel.on('action:workspace-next', () => {
+      lastGestureEl.textContent = 'Two-finger Swipe Left';
+      log(`[GESTURE] Two-finger workspace paging ->`);
+    });
+
+    window.OB.Kernel.on('action:workspace-prev', () => {
+      lastGestureEl.textContent = 'Two-finger Swipe Right';
+      log(`[GESTURE] Two-finger workspace paging <-`);
+    });
+
+    // Raw keyboard listener
+    window.addEventListener('keydown', (e) => {
+      lastKeyEl.textContent = `${e.key} (code=${e.keyCode})`;
+      modAlt.style.color = e.altKey ? '#3fb950' : '#8b949e';
+      modShift.style.color = e.shiftKey ? '#3fb950' : '#8b949e';
+      modCtrl.style.color = e.ctrlKey ? '#3fb950' : '#8b949e';
+      log(`[KEY] key="${e.key}" code=${e.keyCode} alt=${e.altKey} shift=${e.shiftKey}`);
+    });
+
+    window.addEventListener('keyup', (e) => {
+      modAlt.style.color = e.altKey ? '#3fb950' : '#8b949e';
+      modShift.style.color = e.shiftKey ? '#3fb950' : '#8b949e';
+      modCtrl.style.color = e.ctrlKey ? '#3fb950' : '#8b949e';
+    });
+  </script>
+</body>
+</html>

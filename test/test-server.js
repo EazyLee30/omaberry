@@ -88,4 +88,4 @@ setTimeout(() => {
     serverProcess.kill();
     process.exit(1);
   });
-}, 800);
+}, 2500);
