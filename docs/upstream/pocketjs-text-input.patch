@@ -1,0 +1,189 @@
+diff --git a/engine/quickjs-c/pocket_runtime.c b/engine/quickjs-c/pocket_runtime.c
+index d4cd455..e4612e2 100644
+--- a/engine/quickjs-c/pocket_runtime.c
++++ b/engine/quickjs-c/pocket_runtime.c
+@@ -811,6 +811,43 @@ int pocket_runtime_boot(
+ }
+ 
+ /* One guest turn (frame call + job drain), then `tick_count` core ticks. */
++/* ── pending text ────────────────────────────────────────────────────────
++ * The frame wire carries a button mask and touch contacts; it has nowhere to
++ * put typed characters, so a QWERTY host can only report Space as START and
++ * Menu as TRIANGLE. Text arrives here instead and is drained as the fifth
++ * argument to the guest's frame() call.
++ *
++ * Adding an argument is deliberately the compatibility-preserving shape:
++ * every existing guest declares frame(buttons, analog, touches, hits) and
++ * simply never looks at the fifth, so no host and no app has to change.
++ *
++ * Bounded and lossy on overflow -- a keyboard cannot outrun a frame, and an
++ * unbounded queue on a 2 GB device is not worth the failure mode.
++ */
++#define POCKET_TEXT_QUEUE 64
++#define POCKET_TEXT_SLOT  24   /* one codepoint is 4 bytes; a paste is queued whole */
++static char text_queue[POCKET_TEXT_QUEUE][POCKET_TEXT_SLOT];
++static unsigned int text_queue_len[POCKET_TEXT_QUEUE];
++static unsigned int text_queue_head;
++static unsigned int text_queue_tail;
++
++int pocket_runtime_push_text(const uint8_t *utf8, size_t length) {
++  size_t offset = 0;
++  if (utf8 == NULL || length == 0) return 0;
++  /* Split long input across slots rather than truncating it. */
++  while (offset < length) {
++    unsigned int next = (text_queue_head + 1) % POCKET_TEXT_QUEUE;
++    size_t chunk = length - offset;
++    if (next == text_queue_tail) return 0;   /* full: drop the rest */
++    if (chunk > POCKET_TEXT_SLOT) chunk = POCKET_TEXT_SLOT;
++    memcpy(text_queue[text_queue_head], utf8 + offset, chunk);
++    text_queue_len[text_queue_head] = (unsigned int)chunk;
++    text_queue_head = next;
++    offset += chunk;
++  }
++  return 1;
++}
++
+ static int run_frame(
+   uint32_t buttons,
+   const PocketRuntimeContact *contacts,
+@@ -876,14 +913,39 @@ static int run_frame(
+       take_exception(context); runtime_failed = 1; return 0;
+     }
+   }
+-  JSValue arguments[4] = {
++  JSValue text_array = JS_NewArray(context);
++  if (JS_IsException(text_array)) {
++    JS_FreeValue(context, hit_array); JS_FreeValue(context, touch_array);
++    take_exception(context); runtime_failed = 1; return 0;
++  }
++  {
++    uint32_t text_index = 0;
++    while (text_queue_tail != text_queue_head && text_index < POCKET_TEXT_QUEUE) {
++      JSValue item = JS_NewStringLen(
++        context,
++        text_queue[text_queue_tail],
++        text_queue_len[text_queue_tail]
++      );
++      if (JS_IsException(item) ||
++          JS_SetPropertyUint32(context, text_array, text_index, item) < 0) {
++        JS_FreeValue(context, text_array);
++        JS_FreeValue(context, hit_array); JS_FreeValue(context, touch_array);
++        take_exception(context); runtime_failed = 1; return 0;
++      }
++      text_queue_tail = (text_queue_tail + 1) % POCKET_TEXT_QUEUE;
++      text_index += 1;
++    }
++  }
++  JSValue arguments[5] = {
+     JS_NewUint32(context, buttons),
+     JS_NewInt32(context, POCKET_ANALOG_CENTER),
+     touch_array,
+     hit_array,
++    text_array,
+   };
+   BENCH_STAGE(POCKET_BENCH_STAGE_JS);
+-  JSValue result = JS_Call(context, frame_function, global, 4, arguments);
++  JSValue result = JS_Call(context, frame_function, global, 5, arguments);
++  JS_FreeValue(context, text_array);
+   JS_FreeValue(context, hit_array);
+   JS_FreeValue(context, touch_array);
+   if (JS_IsException(result)) {
+diff --git a/engine/quickjs-c/pocket_runtime.h b/engine/quickjs-c/pocket_runtime.h
+index a169040..8aeeaf5 100644
+--- a/engine/quickjs-c/pocket_runtime.h
++++ b/engine/quickjs-c/pocket_runtime.h
+@@ -51,6 +51,21 @@ typedef struct {
+ } PocketRuntimeInput;
+ int pocket_runtime_tick(const PocketRuntimeInput *input);
+ 
++/*
++ * Queue typed characters for the next guest turn.
++ *
++ * The frame wire has a button mask and touch contacts and nothing else, so a
++ * host with a real keyboard can only report Space as START and Menu as
++ * TRIANGLE -- no character ever reaches the app. Hosts with text input call
++ * this with UTF-8 bytes; they are drained into the fifth argument of the
++ * guest's frame() call. A guest that does not accept the extra argument is
++ * unaffected, which is why this is additive rather than a struct change.
++ *
++ * Returns 1 when the bytes were queued, 0 when the queue is full (the input
++ * is dropped, not partially written).
++ */
++int pocket_runtime_push_text(const uint8_t *utf8, size_t length);
++
+ /*
+  * Multi-contact frame entry. `id` is a host-owned contact identity (0-255, stable
+  * while the finger stays down, reusable after release), `x`/`y` are logical
+diff --git a/hosts/blackberry-classic-qnx/main.c b/hosts/blackberry-classic-qnx/main.c
+index 83ba130..eb19877 100644
+--- a/hosts/blackberry-classic-qnx/main.c
++++ b/hosts/blackberry-classic-qnx/main.c
+@@ -303,6 +303,8 @@ static uint32_t button_for_key(int symbol)
+   }
+ }
+ 
++static int encode_utf8(unsigned char *out, unsigned int cp);
++
+ static void handle_keyboard(screen_event_t event)
+ {
+   int flags = 0;
+@@ -322,6 +324,59 @@ static void handle_keyboard(screen_event_t event)
+     (flags & SCREEN_FLAG_KEY_DOWN) != 0,
+     (flags & SCREEN_FLAG_KEY_REPEAT) != 0
+   );
++
++  /* Characters, on top of the button mask.
++   *
++   * The mask is what games and the focus manager want: Space becomes START,
++   * Menu becomes TRIANGLE. A terminal wants the opposite -- Space is a space,
++   * and every printable key is itself. Both are delivered; the guest decides
++   * which it cares about, so neither kind of app has to be sacrificed.
++   *
++   * Only key-down and key-repeat produce text; a release produces none.
++   */
++  if (flags & (SCREEN_FLAG_KEY_DOWN | SCREEN_FLAG_KEY_REPEAT)) {
++    /* screen.h, on SCREEN_PROPERTY_KEY_ALTERNATE_SYM:
++     *   "On reduced keyboards with a limited number of keys, the alternate key
++     *    symbol may correspond to a non-printable shortcut or command symbol
++     *    while the main key symbol would be suitable for text entry."
++     *
++     * The Q20 is exactly that reduced keyboard, and there is no composed
++     * Unicode property to read -- SCREEN_PROPERTY_UNICODE does not exist in
++     * this SDK. So the main key symbol is the character. The alternate symbol
++     * is delivered separately so a host that wants Alt-chords can read it.
++     */
++    int symbol_for_text = 0;
++    if (screen_get_event_property_iv(event, SCREEN_PROPERTY_KEY_SYM, &symbol_for_text) == 0 &&
++        symbol_for_text > 0x20 && symbol_for_text < 0x7F0000) {
++      unsigned char encoded[4];
++      int length = encode_utf8(encoded, (unsigned int)symbol_for_text);
++      if (length > 0) pocket_runtime_push_text(encoded, (size_t)length);
++    }
++  }
++}
++
++/* The key symbol is a codepoint; the runtime takes UTF-8 bytes. One
++ * codepoint is at most four bytes, and the surrogate range is not valid. */
++static int encode_utf8(unsigned char *out, unsigned int cp)
++{
++  if (cp == 0 || cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF)) return 0;
++  if (cp < 0x80) { out[0] = (unsigned char)cp; return 1; }
++  if (cp < 0x800) {
++    out[0] = (unsigned char)(0xC0 | (cp >> 6));
++    out[1] = (unsigned char)(0x80 | (cp & 0x3F));
++    return 2;
++  }
++  if (cp < 0x10000) {
++    out[0] = (unsigned char)(0xE0 | (cp >> 12));
++    out[1] = (unsigned char)(0x80 | ((cp >> 6) & 0x3F));
++    out[2] = (unsigned char)(0x80 | (cp & 0x3F));
++    return 3;
++  }
++  out[0] = (unsigned char)(0xF0 | (cp >> 18));
++  out[1] = (unsigned char)(0x80 | ((cp >> 12) & 0x3F));
++  out[2] = (unsigned char)(0x80 | ((cp >> 6) & 0x3F));
++  out[3] = (unsigned char)(0x80 | (cp & 0x3F));
++  return 4;
+ }
+ 
+ static void handle_touch(screen_event_t event, int type)

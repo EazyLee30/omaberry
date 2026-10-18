@@ -98,7 +98,56 @@ outside `POCKET_TARGETS` until installation, boot, presentation, touch,
 keyboard, trackpad, background/resume and repeatable delivery are all
 recorded — so it is not yet a validated target in upstream terms either.
 
-## What Phase 1 actually requires
+## Phase 1: text input is now in the ABI
+
+Written and built, not yet observed on a device. The patch is
+[`docs/upstream/pocketjs-text-input.patch`](upstream/pocketjs-text-input.patch)
+(189 lines, 134 insertions across three files).
+
+**`pocket_runtime_push_text(const uint8_t *, size_t)`** queues UTF-8 bytes; the
+queue drains into the **fifth argument** of the guest's `frame()` call.
+
+That shape is the whole compatibility argument. Every existing guest declares
+`frame(buttons, analog, touches, hits)` and simply never reads a fifth
+parameter, so no host and no app has to change to keep working. A struct change
+to `PocketRuntimeInput` would have been an ABI break for all eleven hosts.
+
+The queue is bounded and lossy on overflow (64 slots × 24 bytes, split long
+input rather than truncating it). A keyboard cannot outrun a frame.
+
+### What QNX actually gives you for text
+
+The first attempt used `SCREEN_PROPERTY_UNICODE`. **It does not exist in
+BBNDK 10.3.1** — the build failed on an undeclared identifier. Pulling the
+header out of the pinned image and reading it is what settled it. The real
+surface is `KEY_SYM`, `KEY_ALTERNATE_SYM`, `KEY_CAP`, `KEY_SCAN`, `KEY_FLAGS`,
+`KEY_MODIFIERS`, `MODIFIERS`.
+
+screen.h, on `SCREEN_PROPERTY_KEY_ALTERNATE_SYM`, describes the Q20 exactly:
+
+> On reduced keyboards with a limited number of keys, the alternate key symbol
+> may correspond to a non-printable shortcut or command symbol while the main
+> key symbol would be suitable for text entry.
+
+So the **main `KEY_SYM` is the character**, and `KEY_ALTERNATE_SYM` is the
+Alt-chord variant — which matches what the Q20 does today, where Alt+F arrives
+as `6`. The host now encodes `KEY_SYM` to UTF-8 and pushes it on key-down and
+key-repeat.
+
+### Verified
+
+- builds: `bun blackberry-qnx build` → `pocketjs-blackberry-classic-hero.bar`
+- `pocket_runtime_push_text` is present in the linked ELF
+- BAR grew 0.5 KB (819.1 → 819.6 KB)
+- installs on the rooted Q20: `result::success`
+
+### Not verified
+
+That typing a character reaches the app. This needs the app on the device to
+read the new `frame()` argument and do something with it; the Hero demo does
+not, so the pipeline is there and unexercised.
+
+## What Phase 1 still requires
 
 1. Feed QNX `SCREEN_EVENT_KEYBOARD` into a text path instead of only into the
    button mask. Character semantics and key semantics have to stay distinct
