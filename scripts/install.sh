@@ -27,27 +27,60 @@ cat << 'EOF' > "$LAUNCHER"
 OMA_PATH="/accounts/1000/shared/misc/omaberry"
 
 if [ ! -d "$OMA_PATH" ]; then
-    # Try local directory fallback
     OMA_PATH="$(cd "$(dirname "$0")/.." && pwd)"
 fi
 
 echo "Starting OmaBerry Server..."
-if command -v node >/dev/null 2>&1; then
-    node "$OMA_PATH/server/index.js" &
-    SERVER_PID=$!
-    echo "OmaBerry Server started (PID: $SERVER_PID)"
-    echo "Opening Berry Browser -> http://127.0.0.1:9820"
-    sleep 1
-    
-    # If berry-browser command is available, invoke it
-    if command -v berry-browser >/dev/null 2>&1; then
-        berry-browser "http://127.0.0.1:9820" &
-    else
-        echo "Please open Berry Browser and navigate to: http://127.0.0.1:9820"
-    fi
-else
-    echo "Error: node not found. Please install node-term49 via qpkg."
+echo "  path: $OMA_PATH"
+
+# node lives in more than one place depending on how BerryCore was installed.
+# Try each and use whichever actually runs; do not report success for a fork
+# that immediately died.
+NODE=""
+for candidate in \
+    /accounts/1000/shared/misc/berrycore/bin/node \
+    /accounts/1000/shared/misc/clitools/bin/node \
+    "$(command -v node 2>/dev/null)"
+do
+    [ -z "$candidate" ] && continue
+    [ -x "$candidate" ] || continue
+    "$candidate" -e 1 >/dev/null 2>&1
+    if [ $? -eq 0 ]; then NODE="$candidate"; break; fi
+done
+
+if [ -z "$NODE" ]; then
+    echo ""
+    echo "ERROR: no runnable node found."
+    echo ""
+    echo "Tried:"
+    echo "  /accounts/1000/shared/misc/berrycore/bin/node"
+    echo "  /accounts/1000/shared/misc/clitools/bin/node"
+    echo ""
+    echo "On BB10 a binary must be on the pathtrust allowlist to run. If this"
+    echo "says the file exists but is not executable, the shell you are in has"
+    echo "no execution rights for it -- run this from Term49 instead of an SSH"
+    echo "session, where the app context can exec what the installer registered."
     exit 1
+fi
+
+echo "  node: $NODE"
+"$NODE" "$OMA_PATH/server/index.js" &
+SERVER_PID=$!
+sleep 2
+
+# Check it actually came up rather than trusting the fork.
+if kill -0 "$SERVER_PID" 2>/dev/null; then
+    echo ""
+    echo "OmaBerry Server running (PID $SERVER_PID)"
+    echo "Open Berry Browser -> http://127.0.0.1:9820"
+else
+    echo ""
+    echo "ERROR: server exited. Check $OMA_PATH/omaberry.log"
+    exit 1
+fi
+
+if command -v berry-browser >/dev/null 2>&1; then
+    berry-browser "http://127.0.0.1:9820" &
 fi
 EOF
 
