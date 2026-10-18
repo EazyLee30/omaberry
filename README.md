@@ -51,7 +51,7 @@
 <td width="50%" valign="top">
 
 **◈ Desktop shell**
-720×720 status bar, four workspaces, tiling launcher — built for the square screen, not scaled down.
+720×720 bar, five workspaces, dwindle tiling — built for the square screen, not scaled down.
 
 **⌨ Keyboard-first**
 Every action reachable from the physical QWERTY, trackpad and hardware keys. No touch required.
@@ -66,7 +66,8 @@ A real PTY bridge into the BerryCore shell — not a JavaScript terminal emulato
 Browse, read and edit files straight on the device, sandboxed by the server-side FS API.
 
 **✦ Omarchy visual language**
-Dark theme, monospace type, minimal chrome, gap-tiled windows, green accents.
+Square corners, 2px cyan-to-green focus border, 5px gaps, monospace, and a
+theme engine that ships Omarchy's own palettes and wallpapers.
 
 **◐ Offline-first &amp; recoverable**
 Core desktop works with no network. Install / upgrade / uninstall freely — the BB10 kernel is never touched.
@@ -144,7 +145,7 @@ Every physical input on the device is mapped:
 | <kbd>Alt</kbd>+<kbd>T</kbd> | Open terminal | — | — |
 | <kbd>Alt</kbd>+<kbd>L</kbd> | Open launcher | Exit → Launcher | — |
 | <kbd>Alt</kbd>+<kbd>F</kbd> | Open files | Exit → Files | — |
-| <kbd>Alt</kbd>+<kbd>1</kbd>–<kbd>4</kbd> | Switch workspace | Switch workspace | — |
+| <kbd>Alt</kbd>+<kbd>1</kbd>–<kbd>5</kbd> | Switch workspace | Switch workspace | — |
 | <kbd>Alt</kbd>+<kbd>Q</kbd> | Close window | Close tab | Close |
 | <kbd>Alt</kbd>+<kbd>Enter</kbd> | Toggle fullscreen | Toggle fullscreen | Launch |
 | <kbd>Alt</kbd>+<kbd>Space</kbd> | Command palette | — | — |
@@ -182,7 +183,9 @@ omaberry/
 │       ├── keys.js         Keyboard, trackpad & gesture handler
 │       ├── desktop.js      Desktop shell controller
 │       ├── statusbar.js    Status bar (clock, battery, wifi)
-│       ├── workspace.js    Workspace manager (4 virtual desktops)
+│       ├── workspace.js    5 workspaces
+│       ├── tile.js         dwindle tiling window manager
+│       ├── theme.js        theme + wallpaper engine
 │       ├── launcher.js     App launcher with search
 │       ├── terminal.js     Terminal renderer
 │       └── filemanager.js  File browser

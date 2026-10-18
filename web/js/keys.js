@@ -193,20 +193,21 @@ window.OB.Keys = (function () {
       return true;
     }
 
-    // 3. Green Call Key -> Open & Focus Terminal (Workspace 1)
+    // 3. Green Call Key -> open a terminal. Hyprland's Super+Return opens one
+    //    on the current workspace and tiles it in; it does not jump to a
+    //    workspace that happens to be reserved for terminals.
     if (key === 'Call' || code === KEY_CODES.CALL || key === 'F3') {
       e.preventDefault();
       e.stopPropagation();
-      K.emit('action:switch-workspace', { index: 1 });
-      K.emit('terminal:focus', {});
+      K.emit('action:open-app', { app: 'terminal' });
       return true;
     }
 
-    // 4. Red End Key -> Return to Desktop Home (Workspace 0)
+    // 4. Red End Key -> back to the desktop surface, leaving the shell running
     if (key === 'EndCall' || code === KEY_CODES.END_CALL || key === 'BrowserHome') {
       e.preventDefault();
       e.stopPropagation();
-      K.emit('action:switch-workspace', { index: 0 });
+      K.emit('action:close-window', {});
       return true;
     }
 
@@ -229,6 +230,32 @@ window.OB.Keys = (function () {
     const code = e.keyCode || e.which;
     const currentFocus = K.getState('focus', 'desktop');
     const ws = K.getState('workspace', 0);
+
+    // Alt chords. These are Omarchy's Super chords re-spelled for the Q20,
+    // which has no Super key and whose Alt is a transparent passthrough.
+    if (state.altDown && !state.ctrlDown) {
+      const chords = {
+        t: 'terminal', f: 'fileman', s: 'sysinfo', w: 'webhub', l: 'launcher'
+      };
+      if (chords[key]) {
+        e.preventDefault();
+        if (chords[key] === 'launcher') K.emit('action:toggle-launcher', {});
+        else K.emit('action:open-app', { app: chords[key] });
+        return;
+      }
+      switch (key) {
+        case 'v': e.preventDefault(); K.emit('action:window-cycle', {}); return;
+        case 'q': e.preventDefault(); K.emit('action:window-close', {}); return;
+        case 'h': e.preventDefault(); K.emit('action:focus-left', {}); return;
+        case 'l': e.preventDefault(); K.emit('action:focus-right', {}); return;
+        case 'j': e.preventDefault(); K.emit('action:focus-down', {}); return;
+        case 'k': e.preventDefault(); K.emit('action:focus-up', {}); return;
+        case '1': case '2': case '3': case '4': case '5':
+          e.preventDefault();
+          K.emit('action:switch-workspace', { index: parseInt(key, 10) - 1 });
+          return;
+      }
+    }
 
     // Launcher Modal
     if (currentFocus === 'launcher') {

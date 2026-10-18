@@ -5,19 +5,63 @@
 'use strict';
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const MAX_READ_BYTES = 64 * 1024; // 64 KB safety limit for device memory
 
+/* Root the API at one directory. Everything the browser can ask for is
+ * resolved inside it, symlinks included -- a relative path that climbs out
+ * with "..", or a symlink pointing at /etc, lands nowhere.
+ *
+ * The default is the user's home so the device behaves like before; set
+ * OMABERRY_FS_ROOT to narrow it further. */
+const FS_ROOT = path.resolve(process.env.OMABERRY_FS_ROOT || os.homedir());
+
 function isSafePath(targetPath) {
   if (!targetPath || typeof targetPath !== 'string') return false;
-  const normalized = path.normalize(targetPath);
-  // Prevent sensitive root system modification if needed, but allow browsing /accounts, /var, /tmp
-  return !normalized.includes('\0');
+  if (targetPath.indexOf('\0') !== -1) return false;
+  const resolved = safeResolve(targetPath);
+  return resolved !== null;
+}
+
+/* Map a requested path onto a real path inside FS_ROOT, or null. */
+function safeResolve(targetPath) {
+  const cleaned = String(targetPath).split('\0')[0];
+
+  // A path that is already inside the root is taken at face value -- on the
+  // device the root *is* /accounts/1000/shared and the UI asks for exactly
+  // that, so stripping the leading slash would send it to
+  // /accounts/1000/shared/accounts/1000/shared.
+  const direct = path.resolve(cleaned);
+  let joined;
+  if (direct === FS_ROOT || direct.startsWith(FS_ROOT + path.sep)) {
+    joined = direct;
+  } else {
+    // Otherwise treat it as relative: "/etc/passwd" becomes "<root>/etc/passwd",
+    // which does not exist, instead of reaching the real one.
+    joined = path.resolve(FS_ROOT, cleaned.replace(/^[/\\]+/, ''));
+  }
+  if (joined !== FS_ROOT && !joined.startsWith(FS_ROOT + path.sep)) return null;
+
+  // Follow symlinks for whatever part of the path already exists, so a link
+  // inside the root cannot be used as a bridge out of it.
+  let probe = joined;
+  for (;;) {
+    try {
+      const real = fs.realpathSync(probe);
+      if (real !== FS_ROOT && !real.startsWith(FS_ROOT + path.sep)) return null;
+      return real;
+    } catch (e) {
+      const parent = path.dirname(probe);
+      if (parent === probe) return joined;
+      probe = parent;
+    }
+  }
 }
 
 function handleList(ws, reqPath) {
-  const dirPath = isSafePath(reqPath) ? reqPath : '/accounts/1000/shared';
+  const dirPath = isSafePath(reqPath) ? safeResolve(reqPath) : FS_ROOT;
 
   fs.readdir(dirPath, { withFileTypes: true }, (err, files) => {
     if (err) {
@@ -66,12 +110,15 @@ function handleList(ws, reqPath) {
 }
 
 function handleRead(ws, reqPath) {
-  if (!isSafePath(reqPath)) {
+  // Validate and open the *same* path: checking one string and then reading
+  // the caller's original leaves the two able to disagree.
+  const target = safeResolve(reqPath);
+  if (!target) {
     ws.send(JSON.stringify({ type: 'fs:read:res', error: 'Invalid path' }));
     return;
   }
 
-  fs.readFile(reqPath, 'utf8', (err, data) => {
+  fs.readFile(target, 'utf8', (err, data) => {
     if (err) {
       ws.send(JSON.stringify({
         type: 'fs:read:res',
@@ -91,12 +138,13 @@ function handleRead(ws, reqPath) {
 }
 
 function handleWrite(ws, reqPath, content) {
-  if (!isSafePath(reqPath)) {
+  const target = safeResolve(reqPath);
+  if (!target) {
     ws.send(JSON.stringify({ type: 'fs:write:res', error: 'Invalid path' }));
     return;
   }
 
-  fs.writeFile(reqPath, content, 'utf8', (err) => {
+  fs.writeFile(target, content, 'utf8', (err) => {
     ws.send(JSON.stringify({
       type: 'fs:write:res',
       path: reqPath,
@@ -107,6 +155,8 @@ function handleWrite(ws, reqPath, content) {
 }
 
 module.exports = {
+  FS_ROOT,
+  safeResolve,
   handleList,
   handleRead,
   handleWrite

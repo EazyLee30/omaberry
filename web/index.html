@@ -132,130 +132,45 @@
 
     <!-- ── Workspace 0: OmaBerry Desktop Home Dashboard ─────────── -->
     <div class="workspace active" id="ws-0">
-      <div class="desktop-home">
-        
-        <!-- Hero: the OMARCHY wordmark, straight from omarchy-src/logo.svg -->
-        <div class="desktop-hero">
-          <svg class="desktop-logo" viewBox="0 0 1215 285" xmlns="http://www.w3.org/2000/svg" aria-label="Omarchy">
-            <g fill-rule="evenodd" clip-rule="evenodd">
-              <path d="m720 120h-15v15h-14.998v14.999l-60.002.001v15.002l90-.002v.002h.002l-.002 89.998h-15v15h-13v15h-17v-89.998h-45v90l-45-.002v-89.998h-14.998v-30h14.998v-15.002h-14.998v-30.001h14.998v-75h15v-14.997h15v-15.002h105.002zm-90-.001h45v-74.997h-45z"/>
-              <path d="m105 30.002h15v14.997h15v180.001h-15v15h-15v15.002h-75v-15.002h-15v-15h-15v-180.001h15v-14.997h15v-15.002h75zm-60 194.998h45v-179.998h-45z"/>
-              <path d="m300 15h60v15h15v14.999h15v180.001h-15v15h-15v15h-15l-.004-209.998h-44.994v-.002h-.002v210.002h-45v-210h-44.998v179.997h-.002v30.003h-15v-15.002h-15v-15h-14.998v-180.001h14.998v-14.999h15v-15.002h60v-15h45z"/>
-              <path d="m555 225h-15v15h-15v15h-15v-105.001l-44.998.001v105.002h-45.002v-105.002h-15v-30.001h15v-75h15.002v-14.997h15v-15.002h105zm-89.998-105.001h44.998v-74.997h-44.998z"/>
-              <path d="m885 75h-15v15h-15v15h-15v-59.998h-45v179.998h45v-59.998h15v14.997h15v15.001h15v30h-15v15h-15v15.002l-105-.002v-210.001h14.998v-14.997h15.002v-15.002h105z"/>
-              <path d="m960 119.999h45v-104.999h15v15h15v14.999h15v75.001h15v15h-15v90h-15v15h-15v15.002h-15v-105h-45v105.002l-45-.002v-105h-30v-15h15v-15.001h15v-75h15v-14.997h15v-15.002h15z"/>
-              <path d="m1125 119.999h45v-104.999h15v15h15v15h15v180h-15v15h-15v15.002l-75-.002v-15h-15v-15h-15v-45.001h15v-14.997-.002h30v60h45v-75h-90v-105.001h15v-14.997h15v-15.002h15z"/>
-            </g>
-          </svg>
-          <div class="desktop-hero-title">OMABERRY</div>
-          <div class="desktop-subtitle">OMARCHY × BLACKBERRY CLASSIC Q20</div>
-        </div>
-
-        <!-- 6 Quick Touch App Tiles (Hyprland Floating Cards) -->
-        <div class="desktop-grid">
-          
-          <div class="desktop-card" onclick="window.OB.Workspace.switchWorkspace(1)">
-            <div class="desktop-card-icon" style="color:var(--ob-accent-blue)">
-              <span class="icon-svg" style="width:20px; height:20px;">
-                <svg viewBox="0 0 16 16"><path d="M2 3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H2zm2 2.5 3 2.5-3 2.5V5.5zm5 4.5h3v1H9v-1z" fill="currentColor"/></svg>
-              </span>
-            </div>
-            <div class="desktop-card-text">
-              <span class="desktop-card-title">Terminal</span>
-              <span class="desktop-card-sub">BerryCore sh</span>
-            </div>
-          </div>
-
-          <div class="desktop-card" onclick="window.OB.Workspace.switchWorkspace(2)">
-            <div class="desktop-card-icon" style="color:var(--ob-accent-peach)">
-              <span class="icon-svg" style="width:20px; height:20px;">
-                <svg viewBox="0 0 16 16"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h3.764a1.5 1.5 0 0 1 1.06.44L8.707 3.824A.5.5 0 0 0 9.06 4H13.5A1.5 1.5 0 0 1 15 5.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5v-9z" fill="currentColor"/></svg>
-              </span>
-            </div>
-            <div class="desktop-card-text">
-              <span class="desktop-card-title">Files</span>
-              <span class="desktop-card-sub">/shared</span>
-            </div>
-          </div>
-
-          <div class="desktop-card" onclick="window.OB.Workspace.switchWorkspace(3)">
-            <div class="desktop-card-icon" style="color:var(--ob-accent-teal)">
-              <span class="icon-svg" style="width:20px; height:20px;">
-                <svg viewBox="0 0 16 16"><path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm5.93 7h-2.95a12.8 12.8 0 0 0-.82-4.13A6.98 6.98 0 0 1 13.93 7zM8 1.07c.83 1.2 1.5 2.8 1.83 4.93H6.17C6.5 3.87 7.17 2.27 8 1.07zM1.84 9h2.95c.18 1.5.49 2.91.89 4.13A6.98 6.98 0 0 1 1.84 9zm2.95-2H1.84a6.98 6.98 0 0 1 3.9-4.13c-.4 1.22-.71 2.63-.89 4.13zM8 14.93c-.83-1.2-1.5-2.8-1.83-4.93h3.66c-.33 2.13-1 3.73-1.83 4.93zm1.96-5.93H6.04A11.7 11.7 0 0 1 6 8c0-.34.01-.67.04-1h3.92c.03.33.04.66.04 1 0 .34-.01.67-.04 1zm.2 4.13c.4-1.22.71-2.63.89-4.13h2.95a6.98 6.98 0 0 1-3.84 4.13z" fill="currentColor"/></svg>
-              </span>
-            </div>
-            <div class="desktop-card-text">
-              <span class="desktop-card-title">Browser</span>
-              <span class="desktop-card-sub">Chromium 120</span>
-            </div>
-          </div>
-
-          <div class="desktop-card" onclick="window.open('http://127.0.0.1:8120', '_blank')">
-            <div class="desktop-card-icon" style="color:var(--ob-accent-mauve)">
-              <span class="icon-svg" style="width:20px; height:20px;">
-                <svg viewBox="0 0 16 16"><path d="M8 1.5a6.5 6.5 0 0 0-6.5 6.5c0 1.9.82 3.61 2.13 4.8.2.18.37.52.37.8v.9a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5v-.9c0-.28.17-.62.37-.8 1.31-1.19 2.13-2.9 2.13-4.8A6.5 6.5 0 0 0 8 1.5zM6 10h4v1H6v-1zm1-3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z" fill="currentColor"/></svg>
-              </span>
-            </div>
-            <div class="desktop-card-text">
-              <span class="desktop-card-title">Agent Hub</span>
-              <span class="desktop-card-sub">Codex :8120</span>
-            </div>
-          </div>
-
-          <div class="desktop-card" onclick="window.OB.Workspace.switchWorkspace(4)">
-            <div class="desktop-card-icon" style="color:var(--ob-accent-green)">
-              <span class="icon-svg" style="width:20px; height:20px;">
-                <svg viewBox="0 0 16 16"><path d="M5 0a1 1 0 0 1 1 1v1h4V1a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v1h1a1 1 0 1 1 0 2h-1v4h1a1 1 0 1 1 0 2h-1v1a2 2 0 0 1-2 2h-1v1a1 1 0 1 1-2 0v-1H6v1a1 1 0 1 1-2 0v-1H3a2 2 0 0 1-2-2v-1H0a1 1 0 1 1 0-2h1V7H0a1 1 0 0 1 0-2h1V4a2 2 0 0 1 2-2h1V1a1 1 0 0 1 1-1zm8 4H3v8h10V4zM5 6h6v4H5V6z" fill="currentColor"/></svg>
-              </span>
-            </div>
-            <div class="desktop-card-text">
-              <span class="desktop-card-title">System</span>
-              <span class="desktop-card-sub">QNX 8.0 · Krait</span>
-            </div>
-          </div>
-
-          <div class="desktop-card" onclick="window.OB.Launcher.open()">
-            <div class="desktop-card-icon" style="color:var(--ob-accent-pink)">
-              <span class="icon-svg" style="width:20px; height:20px;">
-                <svg viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" fill="currentColor"/></svg>
-              </span>
-            </div>
-            <div class="desktop-card-text">
-              <span class="desktop-card-title">All Apps</span>
-              <span class="desktop-card-sub">BB Menu key</span>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- Telemetry Status Bar -->
-        <div class="desktop-telemetry">
-          <span>Q20 Krait 1.5GHz</span>
-          <span>·</span>
-          <span>720×720</span>
-          <span>·</span>
-          <span>Swipe ◄► Switch WS</span>
-        </div>
-
-      </div>
+      <!-- dwindle: empty until something is opened -->
+    
     </div>
 
     <!-- ── Workspace 1: Terminal / Shell ────────────────────────── -->
     <div class="workspace" id="ws-1">
-      <div class="window-tile focused" data-app="terminal">
+    
+    </div>
+
+    <!-- ── Workspace 2: File Manager ────────────────────────────── -->
+    <div class="workspace" id="ws-2">
+    
+    </div>
+
+    <!-- ── Workspace 3: Web & Cloud Hub ─────────────────────────── -->
+    <div class="workspace" id="ws-3">
+    
+    </div>
+
+    <!-- ── Workspace 4: System Diagnostics & Hardware ───────────── -->
+    <div class="workspace" id="ws-4">
+    
+    </div>
+
+  </main>
+
+  <!-- ── Bottom Floating Dock ─────────────────────────────────────── -->
+
+  <!-- ── App templates, instantiated by the tiling window manager ── -->
+<template id="tpl-terminal">
+<div class="window-tile" data-app="terminal">
         <div class="window-header">
-          <div class="window-dots">
-            <span class="win-dot red" onclick="window.OB.Workspace.switchWorkspace(0)" title="Close to Home"></span>
-            <span class="win-dot yellow" onclick="window.OB.Workspace.switchWorkspace(0)"></span>
-            <span class="win-dot green" onclick="window.OB.Workspace.toggleFullscreen()"></span>
-          </div>
           <span class="window-title">
             <span class="icon-svg" style="color:var(--ob-accent-blue)">
               <svg viewBox="0 0 16 16"><path d="M2 3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H2zm2 2.5 3 2.5-3 2.5V5.5zm5 4.5h3v1H9v-1z" fill="currentColor"/></svg>
             </span>
             <span>omarchy@q20: ~ (BerryCore sh)</span>
           </span>
-          <span class="window-tag">dwindle</span>
+          <span class="window-actions"><span class="window-tag">dwindle</span><button class="window-close" data-tile-close title="Close (Alt+Q)"><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg></button></span>
         </div>
         <div class="window-body">
           <div class="terminal-container">
@@ -293,25 +208,17 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- ── Workspace 2: File Manager ────────────────────────────── -->
-    <div class="workspace" id="ws-2">
-      <div class="window-tile focused" data-app="fileman" style="display:grid; grid-template-rows:26px 30px 1fr;">
+    </template>
+<template id="tpl-fileman">
+<div class="window-tile" data-app="fileman" style="display:grid; grid-template-rows:26px 30px 1fr;">
         <div class="window-header">
-          <div class="window-dots">
-            <span class="win-dot red" onclick="window.OB.Workspace.switchWorkspace(0)"></span>
-            <span class="win-dot yellow"></span>
-            <span class="win-dot green"></span>
-          </div>
           <span class="window-title">
             <span class="icon-svg" style="color:var(--ob-accent-blue)">
               <svg viewBox="0 0 16 16"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h3.764a1.5 1.5 0 0 1 1.06.44L8.707 3.824A.5.5 0 0 0 9.06 4H13.5A1.5 1.5 0 0 1 15 5.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5v-9z" fill="currentColor"/></svg>
             </span>
             <span>BerryFS File Browser</span>
           </span>
-          <span class="window-tag">shared</span>
+          <span class="window-actions"><span class="window-tag">shared</span><button class="window-close" data-tile-close title="Close (Alt+Q)"><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg></button></span>
         </div>
         <div style="background:var(--ob-bg-mantle); padding:4px 8px; border-bottom:1px solid rgba(255,255,255,0.05); display:flex; align-items:center; gap:6px;">
           <button onclick="window.OB.FileManager.goUp()" style="background:var(--ob-bg-surface); border:1px solid rgba(255,255,255,0.08); color:var(--ob-text-primary); border-radius:4px; padding:3px 8px; cursor:pointer; font-size:10px; font-weight:600; display:flex; align-items:center; gap:4px;">
@@ -329,25 +236,17 @@
             <textarea id="fm-viewer" style="flex:1; width:100%; background:transparent; border:none; outline:none; color:var(--ob-text-primary); font-family:var(--ob-font-mono); font-size:10.5px; resize:none;" readonly placeholder="Select a file to inspect..."></textarea>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- ── Workspace 3: Web & Cloud Hub ─────────────────────────── -->
-    <div class="workspace" id="ws-3">
-      <div class="window-tile focused" data-app="webhub">
+    </template>
+<template id="tpl-webhub">
+<div class="window-tile" data-app="webhub">
         <div class="window-header">
-          <div class="window-dots">
-            <span class="win-dot red" onclick="window.OB.Workspace.switchWorkspace(0)"></span>
-            <span class="win-dot yellow"></span>
-            <span class="win-dot green"></span>
-          </div>
           <span class="window-title">
             <span class="icon-svg" style="color:var(--ob-accent-blue)">
               <svg viewBox="0 0 16 16"><path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm5.93 7h-2.95a12.8 12.8 0 0 0-.82-4.13A6.98 6.98 0 0 1 13.93 7zM8 1.07c.83 1.2 1.5 2.8 1.83 4.93H6.17C6.5 3.87 7.17 2.27 8 1.07zM1.84 9h2.95c.18 1.5.49 2.91.89 4.13A6.98 6.98 0 0 1 1.84 9zm2.95-2H1.84a6.98 6.98 0 0 1 3.9-4.13c-.4 1.22-.71 2.63-.89 4.13zM8 14.93c-.83-1.2-1.5-2.8-1.83-4.93h3.66c-.33 2.13-1 3.73-1.83 4.93zm1.96-5.93H6.04A11.7 11.7 0 0 1 6 8c0-.34.01-.67.04-1h3.92c.03.33.04.66.04 1 0 .34-.01.67-.04 1zm.2 4.13c.4-1.22.71-2.63.89-4.13h2.95a6.98 6.98 0 0 1-3.84 4.13z" fill="currentColor"/></svg>
             </span>
             <span>Web & Community Hub</span>
           </span>
-          <span class="window-tag">Chromium 120</span>
+          <span class="window-actions"><span class="window-tag">Chromium 120</span><button class="window-close" data-tile-close title="Close (Alt+Q)"><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg></button></span>
         </div>
         <div class="window-body" style="padding:16px; display:flex; flex-direction:column; gap:12px;">
           <h3 style="color:var(--ob-accent-blue); font-size:13px; font-weight:700;">Q20 Web Resources</h3>
@@ -379,25 +278,17 @@
             </a>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- ── Workspace 4: System Diagnostics & Hardware ───────────── -->
-    <div class="workspace" id="ws-4">
-      <div class="window-tile focused" data-app="sysinfo">
+    </template>
+<template id="tpl-sysinfo">
+<div class="window-tile" data-app="sysinfo">
         <div class="window-header">
-          <div class="window-dots">
-            <span class="win-dot red" onclick="window.OB.Workspace.switchWorkspace(0)"></span>
-            <span class="win-dot yellow"></span>
-            <span class="win-dot green"></span>
-          </div>
           <span class="window-title">
             <span class="icon-svg" style="color:var(--ob-accent-blue)">
               <svg viewBox="0 0 16 16"><path d="M5 0a1 1 0 0 1 1 1v1h4V1a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v1h1a1 1 0 1 1 0 2h-1v4h1a1 1 0 1 1 0 2h-1v1a2 2 0 0 1-2 2h-1v1a1 1 0 1 1-2 0v-1H6v1a1 1 0 1 1-2 0v-1H3a2 2 0 0 1-2-2v-1H0a1 1 0 1 1 0-2h1V7H0a1 1 0 0 1 0-2h1V4a2 2 0 0 1 2-2h1V1a1 1 0 0 1 1-1zm8 4H3v8h10V4zM5 6h6v4H5V6z" fill="currentColor"/></svg>
             </span>
             <span>Q20 System Diagnostics</span>
           </span>
-          <span class="window-tag">ARMv7</span>
+          <span class="window-actions"><span class="window-tag">ARMv7</span><button class="window-close" data-tile-close title="Close (Alt+Q)"><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg></button></span>
         </div>
         <div class="window-body" style="padding:12px; font-family:var(--ob-font-mono); font-size:11px; line-height:1.5;">
           <div style="color:var(--ob-accent-blue); font-weight:bold; margin-bottom:6px;">BlackBerry Classic Q20 Hardware Profile:</div>
@@ -416,49 +307,7 @@
             <div>[OK] Toolbelt keys (Call, Menu, Back, End) hooked</div>
           </div>
         </div>
-      </div>
-    </div>
-
-  </main>
-
-  <!-- ── Bottom Floating Dock ─────────────────────────────────────── -->
-  <footer id="dock">
-    <div class="dock-item active" data-action="desktop">
-      <span class="icon-svg">
-        <svg viewBox="0 0 16 16"><path d="M8 1L1 7h2v7h4v-4h2v4h4V7h2L8 1z" fill="currentColor"/></svg>
-      </span>
-      <span>Desk</span>
-      <span class="dock-hint">Home</span>
-    </div>
-    <div class="dock-item" data-action="terminal">
-      <span class="icon-svg">
-        <svg viewBox="0 0 16 16"><path d="M2 3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H2zm2 2.5 3 2.5-3 2.5V5.5zm5 4.5h3v1H9v-1z" fill="currentColor"/></svg>
-      </span>
-      <span>Term</span>
-      <span class="dock-hint">Call</span>
-    </div>
-    <div class="dock-item" data-action="files">
-      <span class="icon-svg">
-        <svg viewBox="0 0 16 16"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h3.764a1.5 1.5 0 0 1 1.06.44L8.707 3.824A.5.5 0 0 0 9.06 4H13.5A1.5 1.5 0 0 1 15 5.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5v-9z" fill="currentColor"/></svg>
-      </span>
-      <span>Files</span>
-      <span class="dock-hint">WS 2</span>
-    </div>
-    <div class="dock-item" data-action="launcher">
-      <span class="icon-svg">
-        <svg viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" fill="currentColor"/></svg>
-      </span>
-      <span>Apps</span>
-      <span class="dock-hint">Menu</span>
-    </div>
-    <div class="dock-item" data-action="shade">
-      <span class="icon-svg">
-        <svg viewBox="0 0 16 16"><path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z" fill="currentColor"/><path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319z" fill="currentColor"/></svg>
-      </span>
-      <span>Quick</span>
-      <span class="dock-hint">▼</span>
-    </div>
-  </footer>
+    </template>
 
   <!-- ── App Launcher Overlay (Rofi / Walker style) ─────────────── -->
   <div id="launcher-overlay">
@@ -491,6 +340,8 @@
 <script src="js/pinyin-data.js"></script>
 <script src="js/meta.js"></script>
 <script src="js/statusbar.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/tile.js"></script>
 <script src="js/workspace.js"></script>
 <script src="js/launcher.js"></script>
 <script src="js/terminal.js"></script>

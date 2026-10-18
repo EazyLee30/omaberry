@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>OmaBerry · 模拟器</title>
+<style>
+  :root { color-scheme: dark; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #0b0b10;
+    color: #cdd6f4;
+    font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+  }
+
+  /* The bezel stands in for the BlackBerry Classic Q20's 3.5" square panel.
+     Everything inside the iframe is the real web/ directory at 720x720. */
+  .device {
+    position: relative;
+    width: 720px;
+    height: 720px;
+    background: #000;
+    border-radius: 18px;
+    padding: 0;
+    box-shadow:
+      0 0 0 10px #16161d,
+      0 0 0 11px #2a2a36,
+      0 24px 60px rgba(0, 0, 0, .7);
+    overflow: hidden;
+  }
+
+  iframe {
+    width: 720px;
+    height: 720px;
+    border: 0;
+    display: block;
+  }
+
+  .bar {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 760px;
+    color: #7f849c;
+    font-size: 12px;
+  }
+
+  .bar b { color: #cdd6f4; font-weight: 600; }
+  .bar kbd {
+    background: #313244;
+    color: #cdd6f4;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font: inherit;
+  }
+
+  a { color: #89b4fa; }
+
+  /* The page is laid out for a square screen; on a short window, scroll
+     rather than squashing the device. */
+  @media (max-height: 860px) {
+    html, body { justify-content: flex-start; padding-top: 24px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="device">
+    <!-- /raw, not /: the root now serves this frame page, so pointing the
+         iframe at it would nest the bezel inside itself. -->
+    <iframe src="/raw" title="OmaBerry desktop" allow="clipboard-read; clipboard-write"></iframe>
+  </div>
+
+  <div class="bar">
+    <span><b>720 × 720</b> 真实 web/ 代码</span>
+    <span>Meta：长按 <kbd>空格</kbd> 或双击 <kbd>Shift</kbd></span>
+    <span><kbd>i</kbd> 中文 · <kbd>hjkl</kbd> 光标 · <kbd>e</kbd> Esc</span>
+    <span>工作区 <kbd>Alt</kbd>+<kbd>1</kbd>–<kbd>5</kbd> · 磁贴 <kbd>Alt</kbd>+<kbd>T/F</kbd></span>
+    <span>菜单键 → 应用列表</span>
+  </div>
+
+</body>
+</html>

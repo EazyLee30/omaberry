@@ -16,7 +16,10 @@ const fsApi = require('./fs-api');
 const sysApi = require('./sys-api');
 
 const PORT = parseInt(process.env.OMABERRY_PORT || '9820', 10);
-const HOST = process.env.OMABERRY_HOST || '0.0.0.0';
+// Loopback by default. The browser and this server live on the same device,
+// so there is no reason to hand a shell and a filesystem to the rest of the
+// LAN. Set OMABERRY_HOST=0.0.0.0 only behind an SSH tunnel or a firewall.
+const HOST = process.env.OMABERRY_HOST || '127.0.0.1';
 const WEB_DIR = path.resolve(__dirname, '../web');
 
 const MIME_TYPES = {
@@ -168,7 +171,26 @@ class SimpleWebSocket {
 /* ── Server Init & WebSocket Upgrade Hook ─────────────────────── */
 const server = http.createServer(handleHttpRequest);
 
+/* A page served from anywhere on the LAN could otherwise open
+ * ws://127.0.0.1:9820 and get the PTY. Only same-origin callers pass. */
+function originAllowed(req) {
+  const origin = req.headers.origin;
+  if (!origin) return true;            // non-browser client
+  try {
+    const u = new URL(origin);
+    const host = (req.headers.host || '').split(':')[0];
+    return u.hostname === '127.0.0.1' || u.hostname === 'localhost' || u.hostname === host;
+  } catch (e) {
+    return false;
+  }
+}
+
 server.on('upgrade', (req, socket, head) => {
+  if (!originAllowed(req)) {
+    socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
+    socket.destroy();
+    return;
+  }
   if (req.headers['upgrade'] && req.headers['upgrade'].toLowerCase() === 'websocket') {
     const key = req.headers['sec-websocket-key'];
     if (!key) {

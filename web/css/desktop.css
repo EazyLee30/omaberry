@@ -537,3 +537,91 @@ body.meta-armed .meta-hints { display: flex; }
 /* ══ Trackpad cursor ═══════════════════════════════════════════════ */
 
 body.trackpad-active #desktop-root { cursor: none; }
+/* ══ Dwindle tiling ═══════════════════════════════════════════════
+ * The tree is rendered as nested flex boxes, so there is nothing to position
+ * in script: a split is a container with a direction and a gap, and the
+ * browser does the arithmetic. Gaps come from hypr general.gaps_in.
+ */
+
+.workspace {
+  display: none;
+  flex-direction: row;
+  gap: 5px;
+  inset: var(--ob-gaps-out);
+}
+.workspace.active { display: flex; }
+
+/* An empty workspace is just the wallpaper, which is the whole point. */
+.workspace[data-empty] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tile-split {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+.tile-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The hint that appears on an empty workspace, so it does not read as a
+ * frozen screen. Kept quiet -- Omarchy's desktop says nothing at all. */
+.workspace[data-empty]::after {
+  content: 'Super+Space  menu   ·   Alt+T  terminal';
+  font-family: var(--ob-font-mono);
+  font-size: var(--ob-font-body-small);
+  color: var(--mocha-overlay0);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.window-tile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--ob-bg-mantle);
+  border: var(--ob-border-size) solid transparent;
+  background-image:
+    linear-gradient(var(--ob-bg-mantle), var(--ob-bg-mantle)),
+    var(--ob-border-inactive);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+/* looknfeel.lua: active_border = 45-degree cyan -> green gradient. */
+.window-tile.focused {
+  background-image:
+    linear-gradient(var(--ob-bg-mantle), var(--ob-bg-mantle)),
+    var(--ob-border-active);
+}
+
+.window-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ob-space-sm);
+  margin-left: auto;
+}
+.window-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--mocha-overlay0);
+}
+.window-close svg { width: 11px; height: 11px; display: block; }
+.window-close:hover { color: var(--mocha-red); }
+.window-close:active { opacity: 0.6; }
+
+/* A tiled pane can get narrow; let the content scroll instead of overflowing. */
+.window-body { min-height: 0; overflow: auto; }

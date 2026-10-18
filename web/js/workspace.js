@@ -1,10 +1,9 @@
-/* OmaBerry Workspace Manager
- * 5 virtual workspaces:
- *   WS 0: Desktop Home (Omarchy Canvas)
- *   WS 1: Terminal (BerryCore sh)
- *   WS 2: File Manager (BerryFS)
- *   WS 3: Web & Community Hub
- *   WS 4: System Diagnostics
+/* OmaBerry workspaces
+ *
+ * A workspace is no longer a home screen with one fixed app in it. Omarchy's
+ * desktop is a tiling window manager (manual/04-navigation.md, dwindle), so a
+ * workspace is just an empty surface that window.OB.Tile fills as you open
+ * things, and it remembers its own tree.
  */
 
 'use strict';
@@ -14,35 +13,32 @@ window.OB = window.OB || {};
 window.OB.Workspace = (function () {
   const K = window.OB.Kernel;
   const TOTAL_WORKSPACES = 5;
-  let currentWorkspace = -1;
+  let currentWorkspace = 0;
   let workspaceEls = [];
 
   function switchWorkspace(index) {
-    if (index < 0 || index >= TOTAL_WORKSPACES || index === currentWorkspace) {
-      return;
-    }
+    if (index < 0 || index >= TOTAL_WORKSPACES) return;
     const prev = currentWorkspace;
     currentWorkspace = index;
 
     workspaceEls.forEach((el, idx) => {
-      if (idx === index) {
-        el.classList.add('active');
-      } else {
-        el.classList.remove('active');
-      }
+      el.classList.toggle('active', idx === index);
     });
 
     K.setState('workspace', currentWorkspace);
     K.emit('workspace:changed', { from: prev, to: currentWorkspace });
+    if (window.OB.Tile) window.OB.Tile.render(index);
+    focusCurrent();
+  }
 
-    if (currentWorkspace === 1) {
-      K.setFocus('terminal');
-      K.emit('terminal:focus', {});
-    } else if (currentWorkspace === 2) {
-      K.setFocus('fileman');
-    } else {
-      K.setFocus('desktop');
+  /* Whatever this workspace last had focused gets the keyboard back. */
+  function focusCurrent() {
+    const focused = K.getState('focusedWin');
+    if (focused && focused.el && document.body.contains(focused.el)) {
+      K.setFocus(focused.app);
+      return;
     }
+    K.setFocus('desktop');
   }
 
   function nextWorkspace() {
@@ -53,82 +49,56 @@ window.OB.Workspace = (function () {
     switchWorkspace((currentWorkspace - 1 + TOTAL_WORKSPACES) % TOTAL_WORKSPACES);
   }
 
-  function focusWindow(winEl) {
-    if (!winEl) return;
-    document.querySelectorAll('.window-tile').forEach(el => el.classList.remove('focused'));
-    winEl.classList.add('focused');
-
-    const appName = winEl.getAttribute('data-app');
-    if (appName) {
-      K.setFocus(appName);
-    }
+  function open(app, opts) {
+    return window.OB.Tile.open(currentWorkspace, app, opts);
   }
 
-  function toggleFullscreen(winEl) {
-    const target = winEl || document.querySelector('.workspace.active .window-tile.focused') || document.querySelector('.workspace.active .window-tile');
-    if (!target) return;
+  function close() {
+    return window.OB.Tile.close(currentWorkspace);
+  }
 
-    const isFull = target.classList.toggle('fullscreen');
-    K.setState('fullscreen', isFull);
-    K.emit('window:fullscreen', { isFull, target });
+  function cycle() {
+    return window.OB.Tile.cycle();
+  }
+
+  function focusDir(dir) {
+    return window.OB.Tile.focusDir(dir);
   }
 
   function init() {
-    const els = document.querySelectorAll('.workspace');
-    workspaceEls = Array.from(els);
-
-    // Initial activation: Workspace 0 is Desktop Home
+    workspaceEls = Array.from(document.querySelectorAll('.workspace'));
     switchWorkspace(0);
 
-    // Register click-to-focus on windows
-    document.querySelectorAll('.window-tile').forEach(win => {
-      win.addEventListener('mousedown', () => focusWindow(win));
-      win.addEventListener('touchstart', () => focusWindow(win), { passive: true });
-    });
-
-    // Window controls
-    document.querySelectorAll('.win-btn.close').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        switchWorkspace(0); // Close window returns to desktop
-      });
-    });
-
-    document.querySelectorAll('.win-btn.max').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const win = btn.closest('.window-tile');
-        toggleFullscreen(win);
-      });
-    });
-
-    // Listen to actions
-    K.on('action:switch-workspace', (data) => {
-      switchWorkspace(data.index);
-    });
-
+    K.on('action:switch-workspace', (data) => switchWorkspace(data.index));
     K.on('action:workspace-next', () => nextWorkspace());
     K.on('action:workspace-prev', () => prevWorkspace());
 
-    // The trackpad engine emits its own pair of events so that a horizontal
-    // flick and a swipe cannot be confused with the keyboard shortcuts.
+    // The trackpad engine emits its own pair of events so a horizontal flick
+    // cannot be confused with the keyboard shortcuts.
     K.on('trackpad:workspace-next', () => nextWorkspace());
     K.on('trackpad:workspace-prev', () => prevWorkspace());
-    K.on('trackpad:activate', () => focusWindow());
+    K.on('trackpad:activate', () => cycle());
 
-    K.on('action:toggle-fullscreen', () => {
-      toggleFullscreen();
-    });
+    K.on('action:window-close', () => close());
+    K.on('action:window-cycle', () => cycle());
+    K.on('action:focus-left', () => focusDir('left'));
+    K.on('action:focus-right', () => focusDir('right'));
+    K.on('action:focus-up', () => focusDir('up'));
+    K.on('action:focus-down', () => focusDir('down'));
+
+    K.on('tile:opened', () => focusCurrent());
+    K.on('tile:closed', () => focusCurrent());
 
     K.register('workspace', {
-      switchWorkspace,
-      nextWorkspace,
-      prevWorkspace,
-      focusWindow,
-      toggleFullscreen,
+      switchWorkspace, nextWorkspace, prevWorkspace,
+      open, close, cycle, focusDir,
       getCurrent: () => currentWorkspace
     });
   }
 
-  return { init, switchWorkspace, nextWorkspace, prevWorkspace, focusWindow, toggleFullscreen };
+  return {
+    init, switchWorkspace, nextWorkspace, prevWorkspace,
+    open, close, cycle, focusDir,
+    getCurrent: () => currentWorkspace
+  };
 })();
