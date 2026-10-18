@@ -147,6 +147,95 @@ index a92d3da..525cc7b 100644
        ) => void;
      }
    ).frame = fn;
+diff --git a/framework/src/index.ts b/framework/src/index.ts
+index 0044703..fdb9d45 100644
+--- a/framework/src/index.ts
++++ b/framework/src/index.ts
+@@ -16,6 +16,7 @@ if (typeof (globalThis as { queueMicrotask?: unknown }).queueMicrotask !== "func
+   };
+ }
+ 
++import { __setText } from "./text-input.ts";
+ import {
+   detectHost,
+   getOps,
+@@ -285,10 +286,12 @@ export function render(code: () => unknown, opts: RenderOptions = {}): () => voi
+       rightAnalog?: number,
+       axisDeltas?: readonly AxisDelta[],
+       motion?: MotionState | null,
++      text?: readonly string[],
+     ) => {
+       __advanceClock(); // virtual frame++, fire due after() timers
+       __setAnalog(analog, rightAnalog); // latch the nub before any app code reads it
+       __setTouches(touches, hits, touchSurfaces); // latch contacts + surface-specific hit facts
++      __setText(text); // latch typed characters before any app code reads them
+       runServicePumps(); // only modules with pending async work register here
+       __drainEffects(); // frame-boundary deliveries enter the world first
+       runFrameHooks(buttons, axisDeltas,
+diff --git a/framework/src/text-input.ts b/framework/src/text-input.ts
+new file mode 100644
+index 0000000..12dba29
+--- /dev/null
++++ b/framework/src/text-input.ts
+@@ -0,0 +1,58 @@
++/**
++ * Typed text reaching the guest.
++ *
++ * The frame wire carries a button mask and touch contacts. A host with a real
++ * keyboard has nowhere to put characters -- the Q20 can only report Space as
++ * START and Menu as TRIANGLE, which is why typing has never reached an app.
++ * The host queues UTF-8 bytes and the runtime hands them over as the ninth
++ * argument of `frame()`, after every parameter the guest already declares.
++ *
++ * This module is the guest-side latch, shaped like `touch.ts`: the composed
++ * frame handler calls `__setText` before app frame hooks run, and app code
++ * reads the snapshot for that frame. It is per-frame rather than an event
++ * stream because the frame is the only moment the host guarantees ordering --
++ * `docs/RUNTIMES.md` law 3 is one guest turn per presented frame.
++ *
++ * Nothing here is consumed implicitly. A text field, a terminal and a game
++ * all want characters differently, and a game that never reads `textPending`
++ * should not have text routed into its input stack.
++ */
++
++const EMPTY: readonly string[] = Object.freeze([]);
++
++let pending: readonly string[] = EMPTY;
++
++/**
++ * Latch the text typed since the previous frame. Called once per frame, before
++ * app frame hooks. An empty or absent array clears the latch.
++ */
++export function __setText(text: readonly string[] | undefined): void {
++  pending = text && text.length > 0 ? text : EMPTY;
++}
++
++/**
++ * The characters typed for this frame, as UTF-8 strings. A single string is
++ * usually one keypress but may be several bytes (a CJK codepoint) or a pasted
++ * chunk, so read the string rather than assuming a length.
++ */
++export function textPending(): readonly string[] {
++  return pending;
++}
++
++/**
++ * Characters typed this frame, and clear them.
++ *
++ * For a component that wants each frame's text exactly once without having to
++ * pair a read with a clear. Everything that ran after the first caller sees an
++ * empty list, which is the intent.
++ */
++export function textConsume(): readonly string[] {
++  const taken = pending;
++  pending = EMPTY;
++  return taken;
++}
++
++/** Drop any unconsumed text. */
++export function resetTextInput(): void {
++  pending = EMPTY;
++}
 diff --git a/hosts/blackberry-classic-qnx/main.c b/hosts/blackberry-classic-qnx/main.c
 index 83ba130..eb19877 100644
 --- a/hosts/blackberry-classic-qnx/main.c

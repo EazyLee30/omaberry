@@ -160,6 +160,63 @@ That typing a character reaches the app. This needs the app on the device to
 read the new `frame()` argument and do something with it; the Hero demo does
 not, so the pipeline is there and unexercised.
 
+## Phase 1: the guest side now has a latch
+
+`framework/src/text-input.ts` is the guest-side counterpart, shaped like the
+existing `touch.ts`: the composed frame handler calls `__setText(text)` before
+app frame hooks run, and app code reads `textPending()` or consumes once with
+`textConsume()`.
+
+Nothing is consumed implicitly. A terminal, a text field and a game want
+characters differently, and a game that never calls `textPending` should not
+have text routed into its input stack. The snapshot is per-frame rather than
+an event stream because the frame is the only moment the host guarantees
+ordering — `docs/RUNTIMES.md` law 3.
+
+This also confirms the additive approach is the codebase's own habit. The
+doc comment on `installFrameHandler` says of the analog parameter: *"Hosts
+without a stick pass one argument; the runtime defaults to center, so every
+pre-analog host, tape and golden is unchanged."* Adding a trailing parameter
+is exactly how this ABI has grown before.
+
+Verified: the whole chain compiles — C queue, ninth argument, host keyboard
+wiring, TS latch — into a BAR. Not verified: that typing reaches an app. The
+Hero demo does not read `textPending`, so the channel is built and
+unexercised.
+
+Patch: [`docs/upstream/pocketjs-text-input.patch`](upstream/pocketjs-text-input.patch),
+311 lines across six files.
+
+## Device notes from the rooted Q20
+
+The web shell is currently dead on the device and the cause is settled.
+
+`node.bin` cannot be executed: `Operation not permitted`. Permissions are
+fine (`-rwxr-xr-x`), so this is **pathtrust**, BB10's execution allowlist. The
+default set trusts `/proc/boot` and `/base`; `/accounts` is not in it.
+
+Three ways out were tried and all failed:
+
+| Attempt | Result |
+| --- | --- |
+| `pathtrust "!<node.bin>"` direct | returns 0, has no effect — lockdown already active |
+| same, elevated through `/bin/__upd` (the route the BAR installer uses) | `open for '…' failed: 13` (EACCES) |
+| append to `/base/etc/rootfs.trusted` | `/base` is a read-only filesystem |
+
+The one remaining route is the persistent debug flag that `pathtrust.sh`
+checks at boot (`/proc/boot/persist-tool -dispathtrustenabled` returns 1, so
+it is not set). Setting it writes persistent flash, so it is left alone here
+and needs an explicit go-ahead.
+
+The clean fix is upstream: `scripts/install.sh` now registers `node` and
+`node.bin` with pathtrust alongside the launcher, so a fresh install registers
+them before lockdown. The web desktop stays unavailable until either that
+happens or the debug flag is set.
+
+**The native path is unaffected.** BAR binaries are registered by the
+installer at install time, which is why the PocketJS demo installs and runs
+while node cannot.
+
 ## What Phase 1 still requires
 
 1. Feed QNX `SCREEN_EVENT_KEYBOARD` into a text path instead of only into the
