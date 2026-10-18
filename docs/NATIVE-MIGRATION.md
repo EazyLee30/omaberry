@@ -102,15 +102,28 @@ recorded — so it is not yet a validated target in upstream terms either.
 
 Written and built, not yet observed on a device. The patch is
 [`docs/upstream/pocketjs-text-input.patch`](upstream/pocketjs-text-input.patch)
-(189 lines, 134 insertions across three files).
+(222 lines, 149 insertions across four files).
 
 **`pocket_runtime_push_text(const uint8_t *, size_t)`** queues UTF-8 bytes; the
 queue drains into the **fifth argument** of the guest's `frame()` call.
 
-That shape is the whole compatibility argument. Every existing guest declares
-`frame(buttons, analog, touches, hits)` and simply never reads a fifth
-parameter, so no host and no app has to change to keep working. A struct change
-to `PocketRuntimeInput` would have been an ABI break for all eleven hosts.
+That shape is the whole compatibility argument. A struct change to
+`PocketRuntimeInput` would have been an ABI break for all eleven hosts, where
+adding a trailing argument keeps every existing consumer correct.
+
+**The slot it goes in matters more than the shape.** The first draft passed
+text as the fifth argument. Reading `framework/src/host.ts` showed the guest's
+`frame()` already declares eight parameters —
+
+```
+frame(buttons, analog, touches, hits, touchSurfaces, rightAnalog, axisDeltas, motion)
+```
+
+— while the C layer only ever passed the first four. So the fifth slot is
+`touchSurfaces`, and a text array landing there would have been read back as
+touch surface data and silently corrupted touch input. Text is now appended
+**after the last declared parameter**, as the ninth argument, with the four
+in-between slots passed as `JS_UNDEFINED`.
 
 The queue is bounded and lossy on overflow (64 slots × 24 bytes, split long
 input rather than truncating it). A keyboard cannot outrun a frame.
@@ -138,7 +151,7 @@ key-repeat.
 
 - builds: `bun blackberry-qnx build` → `pocketjs-blackberry-classic-hero.bar`
 - `pocket_runtime_push_text` is present in the linked ELF
-- BAR grew 0.5 KB (819.1 → 819.6 KB)
+- BAR grew about 0.5 KB
 - installs on the rooted Q20: `result::success`
 
 ### Not verified
