@@ -11,13 +11,48 @@ window.OB = window.OB || {};
 window.OB.Launcher = (function () {
   const K = window.OB.Kernel;
 
+  /* Style entries are generated from the theme engine rather than written
+   * out by hand: a theme added to web/js/theme.js shows up here for free, and
+   * one removed there cannot linger in the menu. */
+  function styleEntries() {
+    const out = [];
+    const themes = (window.OB.Theme && window.OB.Theme.THEMES) || {};
+    Object.keys(themes).forEach((key) => {
+      const theme = themes[key];
+      out.push({
+        id: 'theme-' + key,
+        title: theme.label,
+        desc: 'Theme · ' + key,
+        getIcon: () => window.OB.Icons && window.OB.Icons.gear,
+        badge: 'Style',
+        action: () => {
+          window.OB.Theme.apply(key);
+          K.emit('toast', { text: 'Theme · ' + theme.label, kind: 'success' });
+        }
+      });
+    });
+    out.push({
+      id: 'wallpaper-next',
+      title: 'Next wallpaper',
+      desc: 'Cycle the background for the current theme',
+      getIcon: () => window.OB.Icons && window.OB.Icons.gear,
+      badge: 'Style',
+      action: () => {
+        const r = window.OB.Theme.cycleWallpaper();
+        if (r) K.emit('toast', { text: 'Wallpaper · ' + r.wallpaper, kind: 'success' });
+      }
+    });
+    return out;
+  }
+
   let overlay = null;
   let inputEl = null;
   let listEl = null;
   let selectedIndex = 0;
   let filteredApps = [];
+  let allApps = [];
 
-  const APPS = [
+  const BASE_APPS = [
     {
       id: 'terminal',
       title: 'Terminal (BerryCore)',
@@ -156,9 +191,11 @@ window.OB.Launcher = (function () {
   function filterList(query) {
     const q = (query || '').toLowerCase().trim();
     if (!q) {
-      filteredApps = APPS.slice();
+      allApps = BASE_APPS.concat(styleEntries());
+      filteredApps = allApps.slice();
     } else {
-      filteredApps = APPS.filter(app => {
+      allApps = BASE_APPS.concat(styleEntries());
+      filteredApps = allApps.filter(app => {
         return app.title.toLowerCase().includes(q) ||
                app.desc.toLowerCase().includes(q) ||
                app.id.toLowerCase().includes(q);

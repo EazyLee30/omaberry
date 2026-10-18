@@ -55,11 +55,38 @@ chmod +x "$LAUNCHER"
 chmod +x "$SCRIPT_DIR/preflight.sh"
 chmod +x "$SCRIPT_DIR/uninstall.sh"
 
-# 4. Handle QNX pathtrust if available
+# 4. Handle QNX pathtrust if available.
+#
+# pathtrust is an execution allowlist: the default set trusts /proc/boot and
+# /base, and once it is locked down no later registration is honoured. Anything
+# under /accounts has to be registered before that happens.
+#
+# The obvious entries are the launcher and the server, but neither of those is
+# an executable -- node runs them. Trusting only the scripts leaves node.bin
+# blocked, and the desktop silently never starts.
 if [ -x "/proc/boot/pathtrust" ]; then
     echo "Registering pathtrust for OmaBerry..."
-    /proc/boot/pathtrust "!$LAUNCHER" 2>/dev/null
-    /proc/boot/pathtrust "!$OMA_PATH/server/index.js" 2>/dev/null
+
+    NODE_DIR=""
+    if [ -d "$BIN_DIR/../bin" ]; then
+        NODE_DIR="$(cd "$BIN_DIR/../bin" && pwd)"
+    fi
+
+    for target in "$LAUNCHER" "$OMA_PATH/server/index.js"; do
+        [ -e "$target" ] && /proc/boot/pathtrust "!$target" 2>/dev/null
+    done
+
+    if [ -n "$NODE_DIR" ]; then
+        # BerryCore's node is a wrapper that execs node.bin; both must be
+        # trusted or it is the exec step that gets refused.
+        for bin in "$NODE_DIR/node" "$NODE_DIR/node.bin"; do
+            [ -e "$bin" ] && /proc/boot/pathtrust "!$bin" 2>/dev/null
+        done
+        echo "  trusted node runtime in $NODE_DIR"
+    else
+        echo "  WARNING: node not found near $BIN_DIR -- trusting the launcher"
+        echo "           alone is not enough, node.bin must be trusted too"
+    fi
 fi
 
 echo "========================================="
