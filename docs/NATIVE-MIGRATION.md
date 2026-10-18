@@ -46,9 +46,14 @@ SHA-256: d1487f01f0b0182be9c2bb94f34fd3b394c51a47da09481ca6e9afd0ab8497df
 The size comparison is the point of the exercise: 819 KB against the 65 MB
 Berry Browser repack. There is no Chromium in the package.
 
-**Not verified:** the app has not been launched on the device and seen to
-render. It is installed and present on the filesystem; whether it draws
-anything has not been observed here.
+**Verified on the device:** the app launches and renders. The last gap in P0
+is closed — the chain is build → package → install → run, all observed.
+
+Verified separately: `node` cannot be executed from an SSH session while the
+same binary runs from Term49. The rule is that scripts run (sh interprets
+them) and binaries are refused (`Operation not permitted`) even for
+BAR-installed executables like `content_shell.exe`. It is an execution-context
+difference, not a per-binary blocklist entry.
 
 ## The input gap is narrower than it looked
 
