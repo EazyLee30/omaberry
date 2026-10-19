@@ -5,3 +5,7 @@ node_modules/
 # build artifacts (*.bar packages are uploaded to GitHub Releases instead)
 out/
 *.bar
+# Local secrets. The API key lives here and never in source.
+omaberry.local.json
+omaberry.local.json.*
+*.key

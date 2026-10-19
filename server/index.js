@@ -14,6 +14,7 @@ const crypto = require('crypto');
 const PtyBridge = require('./pty-bridge');
 const fsApi = require('./fs-api');
 const sysApi = require('./sys-api');
+const agentApi = require('./agent-api');
 
 const PORT = parseInt(process.env.OMABERRY_PORT || '9820', 10);
 // Loopback by default. The browser and this server live on the same device,
@@ -251,6 +252,24 @@ function handleWsConnection(ws) {
 
         case 'ping':
           ws.send(JSON.stringify({ type: 'pong' }));
+          break;
+
+        // Agent turns. The reply is a receipt, not a raw model answer: the
+        // frontend distinguishes delivered / accepted / completed and shows
+        // only what was actually observed.
+        case 'agent:describe':
+          ws.send(JSON.stringify({
+            type: 'agent:describe:res',
+            id: msg.id,
+            data: agentApi.describe()
+          }));
+          break;
+
+        case 'agent:chat':
+          agentApi.turn(String(msg.sessionId || 'default'), String(msg.text || ''), msg.system)
+            .then((receipt) => {
+              ws.send(JSON.stringify({ type: 'agent:chat:res', id: msg.id, receipt }));
+            });
           break;
       }
     } catch (e) {

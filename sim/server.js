@@ -33,6 +33,7 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
+const agentApi = require('../server/agent-api');
 
 const WEB_DIR = path.resolve(__dirname, '../web');
 
@@ -358,6 +359,13 @@ server.on('upgrade', (req, socket) => {
       case 'fs:read': fsRead(ws, msg.path); break;
       case 'fs:write': fsWrite(ws, msg.path, msg.content); break;
       case 'ping': ws.send(JSON.stringify({ type: 'pong' })); break;
+      case 'agent:describe':
+        ws.send(JSON.stringify({ type: 'agent:describe:res', id: msg.id, data: agentApi.describe() }));
+        break;
+      case 'agent:chat':
+        agentApi.turn(String(msg.sessionId || 'default'), String(msg.text || ''), msg.system)
+          .then((receipt) => ws.send(JSON.stringify({ type: 'agent:chat:res', id: msg.id, receipt })));
+        break;
     }
   };
 
