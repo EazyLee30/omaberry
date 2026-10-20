@@ -4,6 +4,8 @@ The reference is the local `omarchy-src` checkout at `246f33a2fef66411c990860d88
 
 On Q20, **hold the physical BlackBerry Menu key as Super**. Tapping and releasing Menu opens or dismisses the centered menu. The top-left OmaBerry logo does the same. A chord consumes its key and does not send the letter to a terminal or text field. Menu + trackpad motion focuses adjacent windows. Ctrl combinations need an external keyboard; the same main actions are available through the menu.
 
+Physical acceptance on October 21: the user confirmed two Menu + Enter launches produce tiled terminals, Menu + W closes one and fills the freed space, and tapping Menu opens the centered menu. This confirmation applies to that sequence, not every binding listed below.
+
 | Shortcut | Native action |
 | --- | --- |
 | Super + Enter | New BerryCore terminal |
