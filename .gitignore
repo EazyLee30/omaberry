@@ -8,4 +8,9 @@ out/
 # Local secrets. The API key lives here and never in source.
 omaberry.local.json
 omaberry.local.json.*
+deepseek.json
+deepseek.private.json
 *.key
+
+# Native checkout, toolchains and validation receipts
+.cache/

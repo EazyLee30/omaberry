@@ -1,0 +1,3 @@
+The Omarchy icon in src/icon-omarchy.svg is a vector extraction of U+E900 from default/fonts/omarchy/omarchy.ttf in omarchy-src, revision 246f33a2fef66411c990860d88e0823ae83987fc. See Omarchy-LICENSE.txt. Original geometry is retained, mapped to a 32×32 viewport and colored with the Tokyo Night foreground. Keyboard/menu/layout references are documented in docs/NATIVE-SHORTCUTS.md.
+
+Since 0.8.1 the visible top-bar/menu mark is the project owner's supplied OmaBerry PNG (see docs/BRANDING.md). The upstream glyph remains a historical reference asset and is not included in the current guest pack.

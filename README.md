@@ -1,264 +1,136 @@
 <div align="center">
-
-  <img src="docs/banner.png" alt="OmaBerry — Omarchy on BlackBerry Q20" width="100%">
-
-  <br>
-
-  <img src="docs/icon.png" alt="OmaBerry icon" width="104" height="104">
-
+  <img src="docs/icon.png" alt="OmaBerry logo" width="112" height="112">
   <h1>OmaBerry</h1>
-  <h3>Omarchy on BlackBerry Q20 — a beautiful, modern &amp; opinionated Linux desktop for the keyboard.</h3>
-
+  <p><strong>A native PocketJS tiling desktop for BlackBerry Classic / Q20.</strong></p>
+  <p>BB10 / QNX · BerryCore shell · DeepSeek agents · Omarchy-inspired keyboard controls</p>
   <p>
-    <a href="https://github.com/EazyLee30/omaberry"><img alt="Device" src="https://img.shields.io/badge/device-BlackBerry%20Classic%20%2F%20Q20-ff2d95?style=flat-square&amp;labelColor=0d1117"></a>
-    <a href="https://github.com/EazyLee30/omaberry"><img alt="OS" src="https://img.shields.io/badge/os-BB10%20%C2%B7%20QNX-ff8a00?style=flat-square&amp;labelColor=0d1117"></a>
-    <a href="https://github.com/EazyLee30/omaberry"><img alt="Shell" src="https://img.shields.io/badge/shell-BerryCore-a3ff12?style=flat-square&amp;labelColor=0d1117"></a>
-    <a href="https://github.com/EazyLee30/omaberry"><img alt="Design" src="https://img.shields.io/badge/design-inspired%20by%20Omarchy-ff2d95?style=flat-square&amp;labelColor=0d1117"></a>
+    <img alt="Version" src="https://img.shields.io/badge/native-0.8.1-a9dc62?style=flat-square">
+    <img alt="Runtime" src="https://img.shields.io/badge/runtime-PocketJS-7aa2f7?style=flat-square">
+    <img alt="Platform" src="https://img.shields.io/badge/platform-BB10%20%2F%20QNX-c0caf5?style=flat-square">
+    <a href="LICENSE"><img alt="Code license" src="https://img.shields.io/badge/code-MIT-9ece6a?style=flat-square"></a>
   </p>
-  <p>
-    <a href="https://github.com/EazyLee30/omaberry/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/EazyLee30/omaberry?style=flat-square&amp;label=%E2%9C%8F%20stars&amp;color=ff2d95&amp;labelColor=0d1117"></a>
-    <a href="https://github.com/EazyLee30/omaberry/network/members"><img alt="Forks" src="https://img.shields.io/github/forks/EazyLee30/omaberry?style=flat-square&amp;label=%F0%9F%94%A9%20forks&amp;color=ff8a00&amp;labelColor=0d1117"></a>
-    <a href="https://github.com/EazyLee30/omaberry/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/EazyLee30/omaberry?style=flat-square&amp;label=%F0%9F%93%80%20last%20commit&amp;color=a3ff12&amp;labelColor=0d1117"></a>
-    <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-8b5cf6?style=flat-square&amp;labelColor=0d1117"></a>
-    <a href="https://github.com/EazyLee30/omaberry/releases"><img alt="Status" src="https://img.shields.io/badge/status-v0.1%20preview-b39360?style=flat-square&amp;labelColor=0d1117"></a>
-  </p>
-
-  <p>
-    <a href="#highlights">✦ Highlights</a> ·
-    <a href="#architecture">⬢ Architecture</a> ·
-    <a href="#quick-start">⚡ Quick Start</a> ·
-    <a href="#q20-input-map">⌨ Key Map</a> ·
-    <a href="#roadmap">◈ Roadmap</a> ·
-    <a href="#credits">❖ Credits</a>
-  </p>
-
+  <p><a href="#desktop">Desktop</a> · <a href="#keyboard">Keyboard</a> · <a href="#build-and-install">Build</a> · <a href="native/README.md">Native development</a></p>
 </div>
 
----
+OmaBerry runs directly as a native BB10 application. PocketJS renders the desktop and connects it to QNX input, PTYs, files and processes through native bindings. **No browser, WebView, localhost web server or Node.js service is needed to run the desktop.**
 
-> **Not a Linux port. Not a theme.** OmaBerry is a real desktop shell that runs native
-> BerryCore commands, manages workspaces, and puts the Q20's physical keyboard at the
-> centre of every interaction.
+OmaBerry 现已完全转向 **PocketJS 原生桌面**：在黑莓 Q20 上直接运行终端、文件管理、中文聊天和本地 agent 工具。左上角 OmaBerry logo 打开居中菜单；新窗口递归平铺，实体 Menu 键作为 Super 使用。
 
-<div align="center">
-  <img src="docs/icon.png" alt="OmaBerry running on BlackBerry Q20" width="420">
-</div>
+## Desktop
 
-## Highlights
+<p align="center">
+  <img src="docs/native-home.png" alt="OmaBerry native desktop with its green logo and Liftoff Sunset wallpaper, captured on a Q20" width="360">
+  <img src="docs/native-four.png" alt="Four independent native BerryCore terminals in a recursive tiled layout on a Q20" width="360">
+</p>
 
-<table>
-<tr>
-<td width="50%" valign="top">
+Actual 720 × 720 Q20 framebuffer captures. The default wallpaper is **Liftoff Sunset**, the first artwork from Tokyo Liftoff.
 
-**◈ Desktop shell**
-720×720 bar, five workspaces, dwindle tiling — built for the square screen, not scaled down.
-
-**⌨ Keyboard-first**
-Every action reachable from the physical QWERTY, trackpad and hardware keys. No touch required.
-
-**▶ Native terminal**
-A real PTY bridge into the BerryCore shell — not a JavaScript terminal emulator.
-
-</td>
-<td width="50%" valign="top">
-
-**◱ File manager**
-Browse, read and edit files straight on the device, sandboxed by the server-side FS API.
-
-**✦ Omarchy visual language**
-Square corners, 2px cyan-to-green focus border, 5px gaps, monospace, and a
-theme engine that ships Omarchy's own palettes and wallpapers.
-
-**◐ Offline-first &amp; recoverable**
-Core desktop works with no network. Install / upgrade / uninstall freely — the BB10 kernel is never touched.
-
-</td>
-</tr>
-</table>
-
-## Architecture
-
-```
-┌─────────────────────────────────────┐
-│         BlackBerry Q20 Hardware     │
-│   QWERTY · Trackpad · Touch · Keys │
-├─────────────────────────────────────┤
-│         BB10 / QNX Kernel           │
-├─────────────────────────────────────┤
-│         BerryCore                   │
-│   Node.js 22 · Git · SSH · qpkg    │
-├─────────────────────────────────────┤
-│         OmaBerry Server (Node)      │
-│   WebSocket · PTY · FS · SysInfo   │
-├─────────────────────────────────────┤
-│         Berry Browser (Chromium 120)│
-│   OmaBerry Desktop Shell           │
-│   ┌───────────────────────────────┐ │
-│   │ StatusBar · Workspaces · Dock │ │
-│   │ Launcher · Terminal · Files   │ │
-│   │ Keyboard Handler · Gestures   │ │
-│   └───────────────────────────────┘ │
-└─────────────────────────────────────┘
-```
-
-| Layer | Role |
+| Feature | Available in the native app |
 | --- | --- |
-| **BerryCore** | Unix-like shell environment: Node.js 22, Git, SSH, package manager |
-| **OmaBerry Server** | HTTP + WebSocket daemon bridging PTY, file system and system info |
-| **Desktop shell** | Pure vanilla JS/CSS UI running inside Berry Browser |
+| Tiling desktop | Ten workspaces, up to sixteen windows, recursive half splits, focus/swap, resize, fullscreen and collapse on close |
+| Terminal | Independent BerryCore PTY shells; working directories and running processes survive workspace switches |
+| Files | Browse directories, filter names and read paginated text previews directly from the device |
+| Chat | DeepSeek conversations, common simplified Chinese glyphs and an offline physical-keyboard Pinyin composer |
+| Local agent tools | Execute shell commands, read/write files, inspect and change the live desktop |
+| herdr adaptation | Sidebar showing the actual workspaces, shell windows and built-in agent task states |
+| Notes | A scratchpad for each Notes window |
+| Theme | Tokyo Night colors, thin focus borders, translucent panes and four Tokyo Liftoff wallpapers; wallpaper and style settings persist |
 
-## Quick Start
+Each new window splits the focused pane in half along its longer dimension. Closing a pane lets its neighbor fill the freed area. The desktop has no window-manager titlebars or close buttons; click the top-left logo for the [centered menu](docs/native-menu.png), or use the keyboard.
 
-### 1 · Prerequisites — on Q20, with BerryCore installed
+## Keyboard
 
-```sh
-qpkg install node-term49
-node --version   # must be v22.x
+On the Q20, **hold the physical BlackBerry Menu key to use it as Super**. Tap and release Menu to open or dismiss the menu.
+
+| Shortcut | Action |
+| --- | --- |
+| Super + Enter | Open a new terminal |
+| Super + W / Q | Close the focused window |
+| Super + Space | Open the centered OmaBerry menu |
+| Super + Alt + Space | Applications |
+| Super + arrows / Menu + trackpad | Focus a neighboring pane |
+| Super + Shift + arrows | Swap panes |
+| Super + J | Toggle the split direction |
+| Super + F | Fullscreen / restore |
+| Super + 1…9, 0 | Switch to workspace 1…10 |
+| Super + Shift + number | Move the focused window to a workspace |
+| Super + Shift + F / N / A | Files / Notes / agent chat |
+| Super + Ctrl + Enter | Toggle the herdr sidebar |
+| Super + K | Show shortcut help |
+
+See the [full native shortcut map](docs/NATIVE-SHORTCUTS.md) for workspace cycling, resizing and theme controls. Ctrl chords require a suitable external keyboard; menu actions are also available.
+
+## Native architecture
+
+```text
+Q20 keyboard / trackpad / touchscreen
+                  │
+       BB10 / QNX native host
+       input · lifecycle · rendering
+                  │
+    PocketJS / QuickJS + native renderer
+       TypeScript / Solid JSX desktop
+                  │
+          Native C bindings
+     ┌────────────┼─────────────┐
+     PTYs     files/processes  HTTPS child transport
+     │            │             │
+ BerryCore    local tools    DeepSeek API
 ```
 
-### 2 · Install — from your computer
+The UI is written in TypeScript and Solid JSX and compiled for PocketJS's native renderer. There is no DOM or HTML/CSS page at runtime. Terminal and file operations use native APIs; DeepSeek requests use BerryCore's `curl` with certificate verification.
+
+The built-in agent can use `run_shell`, `read_file`, `write_file` and `desktop`. Commands run with the app's permissions and return their actual output and exit status. The desktop tool can open/focus/close panes, change workspaces and splits, and adjust supported theme settings. Stop cancels an active request and its command process.
+
+API credentials are provisioned separately in private application data. They are not included in the source, UI assets or BAR. Chat and tool results needed for a task are sent to the configured DeepSeek service; the desktop, terminal and file browser work without an AI connection.
+
+## Build and install
+
+This is a development build for a BB10 device with BerryCore installed. The build has been exercised on macOS with Bun, Python 3, Git, Rust and Docker. PocketJS and the BBNDK container are pinned.
 
 ```sh
 git clone https://github.com/EazyLee30/omaberry.git
-scp -r omaberry bb10:/accounts/1000/shared/misc/omaberry
-ssh bb10 'sh /accounts/1000/shared/misc/omaberry/scripts/install.sh'
+cd omaberry
+python3 scripts/native.py prepare
 ```
 
-### 3 · Launch — in Term49 or over SSH
+Follow the [toolchain setup and device installation guide](native/README.md#build) before the first build, then run:
 
 ```sh
-omaberry
+python3 scripts/native.py build
 ```
 
-Then open **Berry Browser** → `http://127.0.0.1:9820`
+Outputs:
 
-<div align="center">
-  <sub>Uninstall any time with <code>scripts/uninstall.sh</code> — nothing outside the OmaBerry directory is modified.</sub>
-</div>
+- `out/native/pocketjs-blackberry-classic-hero.bar` — native BB10 application.
+- `out/native/build-receipt.json` — build identity and artifact hashes.
 
-## Q20 Input Map
+The filename and package ID retain the PocketJS development identity so existing app data survives updates. The installed application is named **OmaBerry** and uses the green OmaBerry icon. Install the BAR with a working BB10 deployment path, allow Shared Files when prompted, and launch it from its phone icon.
 
-Every physical input on the device is mapped:
+See [native development](native/README.md) for private DeepSeek configuration, source layout, build prerequisites and checks. No browser installation step is involved.
 
-| Input | Desktop | Terminal | Launcher |
-| --- | --- | --- | --- |
-| <kbd>Alt</kbd>+<kbd>T</kbd> | Open terminal | — | — |
-| <kbd>Alt</kbd>+<kbd>L</kbd> | Open launcher | Exit → Launcher | — |
-| <kbd>Alt</kbd>+<kbd>F</kbd> | Open files | Exit → Files | — |
-| <kbd>Alt</kbd>+<kbd>1</kbd>–<kbd>5</kbd> | Switch workspace | Switch workspace | — |
-| <kbd>Alt</kbd>+<kbd>Q</kbd> | Close window | Close tab | Close |
-| <kbd>Alt</kbd>+<kbd>Enter</kbd> | Toggle fullscreen | Toggle fullscreen | Launch |
-| <kbd>Alt</kbd>+<kbd>Space</kbd> | Command palette | — | — |
-| <kbd>Alt</kbd>+<kbd>H</kbd><kbd>J</kbd><kbd>K</kbd><kbd>L</kbd> | Focus ← ↓ ↑ → | — | — |
-| Trackpad | Cursor / scroll | Scroll buffer | Navigate items |
-| Trackpad click | Select | — | Launch selected |
-| Back key | Close overlay | Unfocus terminal | Close launcher |
-| Menu key | Context menu | Terminal menu | — |
-| Type anything | — | Input to shell | Filter search |
-| Swipe ← from right | Quick settings | — | — |
-| Swipe → from left | Show launcher | — | — |
+## Current limits
 
-Full mapping lives in [`web/js/keys.js`](web/js/keys.js), with an interactive
-test page at [`test/test-keys.html`](test/test-keys.html).
+This is an independently implemented native adaptation of Omarchy and herdr, with further parity work ahead.
 
-## Project Structure
+- Window layouts, shell sessions, Notes and chat history last for the app process lifetime. Wallpaper and desktop style persist across launches.
+- The terminal handles a basic monochrome VT subset. Full terminal emulation, scrollback browsing and arbitrary full-screen terminal programs are not yet covered.
+- The built-in Pinyin composer is available in Chat. It does not switch the BB10 system input method.
+- One built-in agent task runs at a time. Upstream herdr's daemon, detached CLI/socket protocol, SSH host orchestration and external-agent detection are not implemented.
+- Agents can change the supported live desktop state. Hot rebuilding native JSX and resource packs from inside the app is still future work.
+- The app runs within BB10; it does not install Hyprland or replace the phone OS.
 
-```
-omaberry/
-├── server/
-│   ├── index.js            Main server (HTTP + WebSocket)
-│   ├── pty-bridge.js       Terminal PTY bridge
-│   ├── fs-api.js           Sandboxed file system API
-│   └── sys-api.js          System information
-├── web/
-│   ├── index.html          Desktop shell
-│   ├── assets/             Wallpapers & icons
-│   ├── css/
-│   │   ├── tokens.css      Omarchy design tokens
-│   │   ├── desktop.css     Desktop layout
-│   │   ├── terminal.css    Terminal styles
-│   │   └── launcher.css    Launcher styles
-│   └── js/
-│       ├── kernel.js       Event bus & state management
-│       ├── keys.js         Keyboard, trackpad & gesture handler
-│       ├── desktop.js      Desktop shell controller
-│       ├── statusbar.js    Status bar (clock, battery, wifi)
-│       ├── workspace.js    5 workspaces
-│       ├── tile.js         dwindle tiling window manager
-│       ├── theme.js        theme + wallpaper engine
-│       ├── launcher.js     App launcher with search
-│       ├── terminal.js     Terminal renderer
-│       └── filemanager.js  File browser
-├── scripts/
-│   ├── install.sh          Install to BerryCore
-│   ├── uninstall.sh        Clean removal
-│   └── preflight.sh        Pre-flight system checks
-├── test/
-│   ├── test-keys.html      Interactive keyboard test page
-│   └── test-server.js      Server unit tests
-├── docs/                   Banner & icon artwork
-└── out/                    Built *.bar packages (git-ignored)
-```
-
-## Design Language
-
-Derived from Omarchy's visual system, adapted for a 720×720 square screen:
-
-| Token | Value | Usage |
-| --- | --- | --- |
-| Background | `#0d1117` → `#161b22` | Desktop gradient |
-| Surface | `#21262d`, border `#30363d` | Windows, panels |
-| Accent | `#a3ff12` / `#58a6ff` / `#ff2d95` | Focus, links, highlights |
-| Type | JetBrainsMono Nerd Font → monospace fallback | All UI text |
-| Chrome | None | No window decorations, 8px radius, 4px gaps |
-| Bar | 28px translucent | Status bar at the top |
-
-## What it is *not*
-
-- Not Arch Linux, and not official Omarchy
-- Not a Linux kernel replacement for BB10
-- Not Hyprland / Wayland / X11
-- Does not replace the BB10 home screen at OS level
-- Does not require reflashing, bootloader changes or root
-
-## Roadmap
-
-- [x] Desktop shell, status bar, workspaces, launcher
-- [x] Native PTY terminal on BerryCore
-- [x] File manager with sandboxed FS API
-- [x] Full Q20 keyboard, trackpad & gesture map
-- [x] QNX `pathtrust` registration so the binary runs untrusted
-- [ ] Agent hub — connect external AI agents over SSH / API
-- [ ] Themable accent colours & wallpaper picker
-- [ ] Bluetooth keyboard & external display support
-- [ ] Signed `.bar` release channel
+The older `web/`, `server/`, `sim/` and browser packaging scripts are retained as historical source. They are outside the active native runtime and build path. Development now targets `native/` and `scripts/native.py`.
 
 ## Credits
 
-OmaBerry would not exist without the work of these projects and people:
+- [PocketJS](https://github.com/pocket-nexus/pocketjs) — native runtime and compiler, pinned to `3d0983769f62ac75bacd62b723c15202425b2dd1`.
+- [Omarchy](https://github.com/omacom/omarchy) and [Omarchy Mobile](https://github.com/derekross/omarchy-mobile) — keyboard, menu, tiling and visual references.
+- [herdr](https://github.com/herdrdev/herdr) — workspace and agent interface reference.
+- [Tokyo Liftoff](https://github.com/tcballard/omarchy-theme-tokyo-liftoff) — theme and wallpaper artwork. See the retained [artwork credits](native/src/Tokyo-Liftoff-CREDITS.txt) and [theme license](native/src/Tokyo-Liftoff-LICENSE.txt).
+- Noto Sans SC — common Chinese glyphs, under the included [SIL Open Font License](native/src/OFL-NotoSansSC.txt).
+- BerryCore — the device's shell tools and HTTPS transport.
 
-| Project | What it gives us |
-| --- | --- |
-| [Omarchy](https://github.com/omaranstudio/omarchy) | The design language and the idea of an opinionated Linux desktop |
-| [BerryCore](https://github.com/sw7ft/BerryCore) | The Unix-like shell environment running on BB10 |
-| [reberry](https://github.com/EazyLee30/reberry) | Q20 recovery, BerryCore setup and device bring-up |
-| [berrybrowser-cjk](https://github.com/EazyLee30/berrybrowser-cjk) | CJK font patch for Berry Browser |
-| `berrycode` *(local)* | ChatGPT + Codex running on BB10 |
+The [OmaBerry logo](docs/logo.png) is the project owner's supplied artwork, used consistently in the native top bar, menu, application icon and this README. [Brand asset details](docs/BRANDING.md).
 
-## License
-
-<div align="center">
-
-**MIT** © 2026 Eazy Lee — see [LICENSE](LICENSE).
-
-BlackBerry, BB10, QNX and Q20 are trademarks of their respective owners.
-OmaBerry is an independent community project, not affiliated with BlackBerry Limited.
-Omarchy design language used with attribution to Oman Studio.
-
-<br>
-
-<a href="https://github.com/EazyLee30/omaberry"><img alt="⭐ Star OmaBerry" src="https://img.shields.io/badge/%E2%9C%8F%20star%20OmaBerry-ff2d95?style=for-the-badge&amp;labelColor=0d1117"></a>
-
-<sub>Built for the keyboard. The desktop returns.</sub>
-
-</div>
+OmaBerry code is [MIT licensed](LICENSE). Third-party assets retain their own licenses and source attributions. Implementation and device verification history is recorded in [NATIVE-MIGRATION.md](docs/NATIVE-MIGRATION.md).

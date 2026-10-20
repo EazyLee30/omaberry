@@ -1,0 +1,798 @@
+diff --git a/engine/quickjs-c/pocket_runtime.c b/engine/quickjs-c/pocket_runtime.c
+index d4cd455..af29824 100644
+--- a/engine/quickjs-c/pocket_runtime.c
++++ b/engine/quickjs-c/pocket_runtime.c
+@@ -3,6 +3,14 @@
+ #include "pocket_ui_cabi.h"
+ #include "pocket_spec.h"
+ #include "quickjs.h"
++#ifdef __QNXNTO__
++#include "../../hosts/blackberry-classic-qnx/terminal_qjs.h"
++#include "../../hosts/blackberry-classic-qnx/files_qjs.h"
++#include "../../hosts/blackberry-classic-qnx/ai_qjs.h"
++#include "../../hosts/blackberry-classic-qnx/exec_qjs.h"
++#include "../../hosts/blackberry-classic-qnx/ime_qjs.h"
++#include "../../hosts/blackberry-classic-qnx/theme_qjs.h"
++#endif
+ #ifdef POCKET_RUNTIME_EXTENSION
+ #include "pocketjs_symbian_extension.h"
+ /* Reuse the existing native core ABI, including its compatibility name. */
+@@ -557,6 +565,9 @@ static int add_host_operation(
+ }
+ 
+ static int install_host(int width, int height) {
++#ifdef __QNXNTO__
++  if (!oma_install_terminal(context, global) || !oma_install_files(context, global) || !oma_install_ai(context, global) || !oma_install_exec(context, global) || !oma_install_ime(context, global) || !oma_install_theme(context, global)) return 0;
++#endif
+ #ifdef POCKET_OFFLOAD_POSIX
+   if (!install_offload(context, global)) return 0;
+ #endif
+@@ -658,6 +669,14 @@ static int drain_jobs(void) {
+ }
+ 
+ void pocket_runtime_shutdown(void) {
++#ifdef __QNXNTO__
++  {int slot;for(slot=0;slot<OMA_TERMINALS;slot++){oma_slot=slot;oma_close();}}
++  ai_cancel();
++  ox_cancel();
++  oma_composing = 0;
++  oma_keep_alive = 0;
++  oma_shortcut_count = 0;
++#endif
+ #ifdef POCKET_RUNTIME_EXTENSION
+   if (native_extension && native_extension->shutdown) native_extension->shutdown(native_gl_current);
+   native_extension = NULL;
+@@ -811,6 +830,43 @@ int pocket_runtime_boot(
+ }
+ 
+ /* One guest turn (frame call + job drain), then `tick_count` core ticks. */
++/* ── pending text ────────────────────────────────────────────────────────
++ * The frame wire carries a button mask and touch contacts; it has nowhere to
++ * put typed characters, so a QWERTY host can only report Space as START and
++ * Menu as TRIANGLE. Text arrives here instead and is drained as the fifth
++ * argument to the guest's frame() call.
++ *
++ * Adding an argument is deliberately the compatibility-preserving shape:
++ * every existing guest declares frame(buttons, analog, touches, hits) and
++ * simply never looks at the fifth, so no host and no app has to change.
++ *
++ * Bounded and lossy on overflow -- a keyboard cannot outrun a frame, and an
++ * unbounded queue on a 2 GB device is not worth the failure mode.
++ */
++#define POCKET_TEXT_QUEUE 64
++#define POCKET_TEXT_SLOT  24   /* one codepoint is 4 bytes; a paste is queued whole */
++static char text_queue[POCKET_TEXT_QUEUE][POCKET_TEXT_SLOT];
++static unsigned int text_queue_len[POCKET_TEXT_QUEUE];
++static unsigned int text_queue_head;
++static unsigned int text_queue_tail;
++
++int pocket_runtime_push_text(const uint8_t *utf8, size_t length) {
++  size_t offset = 0;
++  if (utf8 == NULL || length == 0) return 0;
++  /* Split long input across slots rather than truncating it. */
++  while (offset < length) {
++    unsigned int next = (text_queue_head + 1) % POCKET_TEXT_QUEUE;
++    size_t chunk = length - offset;
++    if (next == text_queue_tail) return 0;   /* full: drop the rest */
++    if (chunk > POCKET_TEXT_SLOT) chunk = POCKET_TEXT_SLOT;
++    memcpy(text_queue[text_queue_head], utf8 + offset, chunk);
++    text_queue_len[text_queue_head] = (unsigned int)chunk;
++    text_queue_head = next;
++    offset += chunk;
++  }
++  return 1;
++}
++
+ static int run_frame(
+   uint32_t buttons,
+   const PocketRuntimeContact *contacts,
+@@ -876,14 +932,52 @@ static int run_frame(
+       take_exception(context); runtime_failed = 1; return 0;
+     }
+   }
+-  JSValue arguments[4] = {
++  JSValue text_array = JS_NewArray(context);
++  if (JS_IsException(text_array)) {
++    JS_FreeValue(context, hit_array); JS_FreeValue(context, touch_array);
++    take_exception(context); runtime_failed = 1; return 0;
++  }
++  {
++    uint32_t text_index = 0;
++    while (text_queue_tail != text_queue_head && text_index < POCKET_TEXT_QUEUE) {
++      JSValue item = JS_NewStringLen(
++        context,
++        text_queue[text_queue_tail],
++        text_queue_len[text_queue_tail]
++      );
++      if (JS_IsException(item) ||
++          JS_SetPropertyUint32(context, text_array, text_index, item) < 0) {
++        JS_FreeValue(context, text_array);
++        JS_FreeValue(context, hit_array); JS_FreeValue(context, touch_array);
++        take_exception(context); runtime_failed = 1; return 0;
++      }
++      text_queue_tail = (text_queue_tail + 1) % POCKET_TEXT_QUEUE;
++      text_index += 1;
++    }
++  }
++  /* Text goes LAST, not fifth.
++   *
++   * The guest's frame() already declares eight parameters --
++   * (buttons, analog, touches, hits, touchSurfaces, rightAnalog, axisDeltas,
++   * motion) -- and this layer passes only the first four, leaving the rest
++   * undefined. Passing text in the fifth slot would have been read back as
++   * touchSurfaces and silently corrupted touch input. Appending it after the
++   * last declared parameter keeps every existing consumer correct.
++   */
++  JSValue arguments[9] = {
+     JS_NewUint32(context, buttons),
+     JS_NewInt32(context, POCKET_ANALOG_CENTER),
+     touch_array,
+     hit_array,
++    JS_UNDEFINED,
++    JS_UNDEFINED,
++    JS_UNDEFINED,
++    JS_UNDEFINED,
++    text_array,
+   };
+   BENCH_STAGE(POCKET_BENCH_STAGE_JS);
+-  JSValue result = JS_Call(context, frame_function, global, 4, arguments);
++  JSValue result = JS_Call(context, frame_function, global, 9, arguments);
++  JS_FreeValue(context, text_array);
+   JS_FreeValue(context, hit_array);
+   JS_FreeValue(context, touch_array);
+   if (JS_IsException(result)) {
+diff --git a/engine/quickjs-c/pocket_runtime.h b/engine/quickjs-c/pocket_runtime.h
+index a169040..8aeeaf5 100644
+--- a/engine/quickjs-c/pocket_runtime.h
++++ b/engine/quickjs-c/pocket_runtime.h
+@@ -51,6 +51,21 @@ typedef struct {
+ } PocketRuntimeInput;
+ int pocket_runtime_tick(const PocketRuntimeInput *input);
+ 
++/*
++ * Queue typed characters for the next guest turn.
++ *
++ * The frame wire has a button mask and touch contacts and nothing else, so a
++ * host with a real keyboard can only report Space as START and Menu as
++ * TRIANGLE -- no character ever reaches the app. Hosts with text input call
++ * this with UTF-8 bytes; they are drained into the fifth argument of the
++ * guest's frame() call. A guest that does not accept the extra argument is
++ * unaffected, which is why this is additive rather than a struct change.
++ *
++ * Returns 1 when the bytes were queued, 0 when the queue is full (the input
++ * is dropped, not partially written).
++ */
++int pocket_runtime_push_text(const uint8_t *utf8, size_t length);
++
+ /*
+  * Multi-contact frame entry. `id` is a host-owned contact identity (0-255, stable
+  * while the finger stays down, reusable after release), `x`/`y` are logical
+diff --git a/framework/compiler/font-config.ts b/framework/compiler/font-config.ts
+index e40d60a..5c99ff8 100644
+--- a/framework/compiler/font-config.ts
++++ b/framework/compiler/font-config.ts
+@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
+ export interface FontConfig {
+   fallbackTtfs: string[];
+   codepoints: number[];
++  slots?: number[];
+ }
+ 
+ /** Character coverage is independent of the JS source graph. Runtime file
+@@ -14,7 +15,7 @@ export function readFontConfig(path: string, onRead: (path: string) => void = ()
+   const value = JSON.parse(readFileSync(path, "utf8"));
+   const fail = (message: string): never => { throw new Error(`PocketJS fonts.json: ${message}`); };
+   if (!value || typeof value !== "object" || Array.isArray(value)) fail("expected an object");
+-  for (const key of Object.keys(value)) if (!["fallback", "characters", "characterFiles", "ranges"].includes(key)) fail(`unknown field ${key}`);
++  for (const key of Object.keys(value)) if (!["fallback", "characters", "characterFiles", "ranges", "slots"].includes(key)) fail(`unknown field ${key}`);
+   const strings = (key: string): string[] => {
+     const list = value[key] ?? [];
+     if (!Array.isArray(list) || list.some(x => typeof x !== "string" || !x)) fail(`${key} must be an array of nonempty strings`);
+@@ -46,5 +47,6 @@ export function readFontConfig(path: string, onRead: (path: string) => void = ()
+     if (from > to || to > 0x10ffff || to - from >= 65534) fail(`invalid or oversized Unicode range: ${range}`);
+     for (let cp = from; cp <= to; cp++) add(cp);
+   }
+-  return { fallbackTtfs: strings("fallback").map(file), codepoints: [...points].sort((a, b) => a - b) };
++  if(value.slots!==undefined && (!Array.isArray(value.slots) || value.slots.some((n:unknown)=>!Number.isInteger(n) || (n as number)<0 || (n as number)>31))) fail("slots must contain font slot numbers 0..31");
++  return { slots:value.slots, fallbackTtfs: strings("fallback").map(file), codepoints: [...points].sort((a, b) => a - b) };
+ }
+diff --git a/framework/compiler/subpaths.ts b/framework/compiler/subpaths.ts
+index 5bfa2b3..ae5d851 100644
+--- a/framework/compiler/subpaths.ts
++++ b/framework/compiler/subpaths.ts
+@@ -102,6 +102,9 @@ export const SUBPATHS: Record<string, SubpathDecl> = {
+     aliases: ["vue-vapor"],
+   },
+   host: { file: "framework/src/host.ts" },
++  // Typed characters reaching the guest (frame() argument 9). Apps read it
++  // the same way they read touch state; nothing consumes it implicitly.
++  "text-input": { file: "framework/src/text-input.ts" },
+   "overlay-host": { file: "framework/src/overlay-host.ts" },
+   "themes/desktop": { file: "framework/src/themes/desktop.ts" },
+   lifecycle: {
+diff --git a/framework/src/devtools.ts b/framework/src/devtools.ts
+index 8107478..8825771 100644
+--- a/framework/src/devtools.ts
++++ b/framework/src/devtools.ts
+@@ -304,6 +304,7 @@ export function wrapFrameHandler(
+     rightAnalog?: number,
+     axisDeltas?: readonly AxisDelta[],
+     motion?: MotionState | null,
++    text?: readonly string[],
+   ) => void,
+ ): (
+   buttons: number,
+@@ -314,6 +315,7 @@ export function wrapFrameHandler(
+   rightAnalog?: number,
+   axisDeltas?: readonly AxisDelta[],
+   motion?: MotionState | null,
++  text?: readonly string[],
+ ) => void {
+   return (
+     buttons: number,
+@@ -324,6 +326,7 @@ export function wrapFrameHandler(
+     rightAnalogArg?: number,
+     axisDeltasArg?: readonly AxisDelta[],
+     motionArg?: MotionState | null,
++    textArg?: readonly string[],
+   ) => {
+     state.hostCalls++;
+     if (state.transport) {
+@@ -338,6 +341,7 @@ export function wrapFrameHandler(
+     let touchSurfaces = touchSurfacesArg;
+     let axisDeltas = axisDeltasArg;
+     let motion = motionArg;
++    let text = textArg;
+     if (state.replayMasks) {
+       if (state.replayAt < state.replayMasks.length) {
+         // Paused host polls must not consume queued replay input.
+@@ -360,6 +364,7 @@ export function wrapFrameHandler(
+         // (op 42/27 against the same committed layout — the same answer the
+         // recording host computed).
+         hits = undefined;
++        text = undefined; // existing tapes do not record keyboard text
+         state.replayAt++;
+       } else {
+         state.replayMasks = null; // tape exhausted: back to live input
+@@ -382,7 +387,7 @@ export function wrapFrameHandler(
+     recordMask(mask, analog, touch, touchSurfaces, rightAnalog, axisDeltas, motion);
+     state.frame++;
+     try {
+-      h(mask, analog, touch, hits, touchSurfaces, rightAnalog, axisDeltas, motion);
++      h(mask, analog, touch, hits, touchSurfaces, rightAnalog, axisDeltas, motion, text);
+     } catch (e) {
+       send({
+         t: "error",
+diff --git a/framework/src/host.ts b/framework/src/host.ts
+index a92d3da..525cc7b 100644
+--- a/framework/src/host.ts
++++ b/framework/src/host.ts
+@@ -457,6 +457,7 @@ export function installFrameHandler(
+     rightAnalog?: number,
+     axisDeltas?: readonly AxisDelta[],
+     motion?: MotionState | null,
++    text?: readonly string[],
+   ) => void,
+ ): void {
+   (
+@@ -470,6 +471,7 @@ export function installFrameHandler(
+         rightAnalog?: number,
+         axisDeltas?: readonly AxisDelta[],
+         motion?: MotionState | null,
++        text?: readonly string[],
+       ) => void;
+     }
+   ).frame = fn;
+diff --git a/framework/src/index.ts b/framework/src/index.ts
+index 0044703..fdb9d45 100644
+--- a/framework/src/index.ts
++++ b/framework/src/index.ts
+@@ -16,6 +16,7 @@ if (typeof (globalThis as { queueMicrotask?: unknown }).queueMicrotask !== "func
+   };
+ }
+ 
++import { __setText } from "./text-input.ts";
+ import {
+   detectHost,
+   getOps,
+@@ -285,10 +286,12 @@ export function render(code: () => unknown, opts: RenderOptions = {}): () => voi
+       rightAnalog?: number,
+       axisDeltas?: readonly AxisDelta[],
+       motion?: MotionState | null,
++      text?: readonly string[],
+     ) => {
+       __advanceClock(); // virtual frame++, fire due after() timers
+       __setAnalog(analog, rightAnalog); // latch the nub before any app code reads it
+       __setTouches(touches, hits, touchSurfaces); // latch contacts + surface-specific hit facts
++      __setText(text); // latch typed characters before any app code reads them
+       runServicePumps(); // only modules with pending async work register here
+       __drainEffects(); // frame-boundary deliveries enter the world first
+       runFrameHooks(buttons, axisDeltas,
+diff --git a/hosts/blackberry-classic-qnx/bar-descriptor.xml b/hosts/blackberry-classic-qnx/bar-descriptor.xml
+index 811e786..4937104 100644
+--- a/hosts/blackberry-classic-qnx/bar-descriptor.xml
++++ b/hosts/blackberry-classic-qnx/bar-descriptor.xml
+@@ -7,13 +7,17 @@
+     <name>@POCKET_TITLE@</name>
+     <versionNumber>@POCKET_VERSION@</versionNumber>
+     <buildId>@POCKET_BUILD_ID@</buildId>
+-    <description>PocketJS Hero running as a native BlackBerry 10 application.</description>
++    <description>OmaBerry native tiling desktop with BerryCore and DeepSeek tools.</description>
+     <author>PocketJS</author>
+     <platformVersion>10.3.1.995</platformVersion>
+ 
+     <asset path="icon.png">icon.png</asset>
+     <asset path="app.js">app.js</asset>
+     <asset path="app.pak">app.pak</asset>
++    <asset path="pinyin.json">pinyin.json</asset>
++    <asset path="Tokyo-Liftoff-CREDITS.txt">Tokyo-Liftoff-CREDITS.txt</asset>
++    <asset path="Tokyo-Liftoff-LICENSE.txt">Tokyo-Liftoff-LICENSE.txt</asset>
++    <asset path="OFL-NotoSansSC.txt">OFL-NotoSansSC.txt</asset>
+ 
+     <configuration name="Device-Release">
+         <platformArchitecture>armle-v7</platformArchitecture>
+@@ -29,5 +33,9 @@
+         <image>icon.png</image>
+     </icon>
+ 
++    <permission>access_shared</permission>
++    <permission>access_internet</permission>
++    <permission>run_when_backgrounded</permission>
++
+     <env var="LD_LIBRARY_PATH" value="app/native/lib"/>
+ </qnx>
+diff --git a/hosts/blackberry-classic-qnx/main.c b/hosts/blackberry-classic-qnx/main.c
+index 83ba130..7b4635a 100644
+--- a/hosts/blackberry-classic-qnx/main.c
++++ b/hosts/blackberry-classic-qnx/main.c
+@@ -14,6 +14,7 @@
+ #include <errno.h>
+ #include <limits.h>
+ #include <stdint.h>
++#include <signal.h>
+ #include <stdbool.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -56,6 +57,12 @@ static int runtime_ready;
+ static PocketInputState input;
+ 
+ static unsigned long frame_count;
++static volatile sig_atomic_t capture_requested;
++static void request_capture(int signal_number)
++{
++  (void)signal_number;
++  capture_requested = 1;
++}
+ static unsigned long touch_event_count;
+ static unsigned long keyboard_event_count;
+ static unsigned long trackpad_event_count;
+@@ -68,6 +75,8 @@ static int last_trackpad_buttons;
+ static int last_key_sym;
+ static int last_key_scan;
+ static int last_key_flags;
++static unsigned long text_event_count;
++static char last_text_hex[64];
+ static unsigned long last_action_sequence;
+ static char status_stage[32] = "starting";
+ static char status_detail[256] = "host entry";
+@@ -110,6 +119,8 @@ static void write_status(void)
+   fprintf(file, "frames=%lu\n", frame_count);
+   fprintf(file, "touch_events=%lu\n", touch_event_count);
+   fprintf(file, "keyboard_events=%lu\n", keyboard_event_count);
++  fprintf(file, "text_events=%lu\n", text_event_count);
++  fprintf(file, "last_text=%s\n", last_text_hex[0] ? last_text_hex : "(none)");
+   fprintf(file, "trackpad_events=%lu\n", trackpad_event_count);
+   fprintf(file, "trackpad_clicks=%lu\n", trackpad_click_count);
+   fprintf(file, "trackpad_displacement=%d,%d\n", last_trackpad_dx, last_trackpad_dy);
+@@ -303,6 +314,18 @@ static uint32_t button_for_key(int symbol)
+   }
+ }
+ 
++static int encode_utf8(unsigned char *out, unsigned int cp);
++
++#include "text_key.h"
++extern int pocket_runtime_terminal_focused(void);
++extern int pocket_runtime_composing(void);
++extern int pocket_runtime_background_busy(void);
++extern void pocket_runtime_terminal_unfocus(void);
++extern void pocket_runtime_shortcut(const char *,int);
++static int oma_super_down,oma_super_used,oma_super_mods;
++static const char *oma_shortcut_name(int symbol,char *letter){switch(symbol){case KEYCODE_RETURN:return "enter";case KEYCODE_SPACE:return "space";case KEYCODE_TAB:return "tab";case KEYCODE_BACKSPACE:return "backspace";case KEYCODE_ESCAPE:return "escape";case KEYCODE_UP:return "up";case KEYCODE_DOWN:return "down";case KEYCODE_LEFT:return "left";case KEYCODE_RIGHT:return "right";default:if(symbol>=32&&symbol<127){letter[0]=(char)(symbol>='A'&&symbol<='Z'?symbol+32:symbol);letter[1]=0;return letter;}return NULL;}}
++
++
+ static void handle_keyboard(screen_event_t event)
+ {
+   int flags = 0;
+@@ -316,12 +339,109 @@ static void handle_keyboard(screen_event_t event)
+   last_key_scan = scan;
+   last_key_flags = flags;
+   status_dirty = 1;
+-  pocket_input_button(
++  screen_get_event_property_iv(event,SCREEN_PROPERTY_KEY_MODIFIERS,&oma_super_mods);
++  /* Q20 Menu is the Super modifier. A clean release opens the menu;
++   * a chord never leaks text or portable focus/activation events. */
++  if(symbol==KEYCODE_MENU||symbol==KEYCODE_LEFT_HYPER||symbol==KEYCODE_RIGHT_HYPER){
++    if(flags & SCREEN_FLAG_KEY_DOWN){if(!oma_super_down){oma_super_down=1;oma_super_used=0;}}
++    else if(!(flags & SCREEN_FLAG_KEY_REPEAT)){if(oma_super_down&&!oma_super_used)pocket_runtime_shortcut("menu",8);oma_super_down=oma_super_used=0;}return;
++  }
++  {int mods=0;char letter[2];const char *name;screen_get_event_property_iv(event,SCREEN_PROPERTY_KEY_MODIFIERS,&mods);
++    if(oma_super_down||((mods&KEYMOD_ALT)&&symbol==KEYCODE_TAB)){
++      pocket_input_button(&input,button_for_key(symbol),0,0);
++      if(flags&(SCREEN_FLAG_KEY_DOWN|SCREEN_FLAG_KEY_REPEAT)){name=oma_shortcut_name(symbol,letter);if(name){oma_super_used=1;pocket_runtime_shortcut(name,(mods&7)|(oma_super_down?8:0));}}
++      return;
++    }
++  }
++  if (pocket_runtime_terminal_focused()) {
++    const char *sequence = NULL;
++    pocket_input_button(&input, button_for_key(symbol), 0, 0);
++    if (!(flags & (SCREEN_FLAG_KEY_DOWN | SCREEN_FLAG_KEY_REPEAT))) return;
++    switch (symbol) {
++      case KEYCODE_UP: sequence = "\033[A"; break;
++      case KEYCODE_DOWN: sequence = "\033[B"; break;
++      case KEYCODE_RIGHT: sequence = "\033[C"; break;
++      case KEYCODE_LEFT: sequence = "\033[D"; break;
++      default: break;
++    }
++    if (sequence) { pocket_runtime_push_text((const unsigned char *)sequence, strlen(sequence)); return; }
++  } else if(pocket_runtime_composing() && (symbol==KEYCODE_RETURN || symbol==KEYCODE_SPACE || symbol==KEYCODE_UP || symbol==KEYCODE_DOWN || symbol==KEYCODE_LEFT || symbol==KEYCODE_RIGHT)) {
++    const char *sequence=NULL;
++    pocket_input_button(&input,button_for_key(symbol),0,0);
++    if(!(flags & (SCREEN_FLAG_KEY_DOWN | SCREEN_FLAG_KEY_REPEAT)))return;
++    if(symbol==KEYCODE_UP)sequence="\033[A";
++    if(symbol==KEYCODE_DOWN)sequence="\033[B";
++    if(symbol==KEYCODE_RIGHT)sequence="\033[C";
++    if(symbol==KEYCODE_LEFT)sequence="\033[D";
++    if(sequence){pocket_runtime_push_text((const unsigned char *)sequence,strlen(sequence));return;}
++  } else pocket_input_button(
+     &input,
+     button_for_key(symbol),
+     (flags & SCREEN_FLAG_KEY_DOWN) != 0,
+     (flags & SCREEN_FLAG_KEY_REPEAT) != 0
+   );
++
++  /* Characters, on top of the button mask.
++   *
++   * The mask is what games and the focus manager want: Space becomes START,
++   * Menu becomes TRIANGLE. A terminal wants the opposite -- Space is a space,
++   * and every printable key is itself. Both are delivered; the guest decides
++   * which it cares about, so neither kind of app has to be sacrificed.
++   *
++   * Only key-down and key-repeat produce text; a release produces none.
++   */
++  if (flags & (SCREEN_FLAG_KEY_DOWN | SCREEN_FLAG_KEY_REPEAT)) {
++    /* screen.h, on SCREEN_PROPERTY_KEY_ALTERNATE_SYM:
++     *   "On reduced keyboards with a limited number of keys, the alternate key
++     *    symbol may correspond to a non-printable shortcut or command symbol
++     *    while the main key symbol would be suitable for text entry."
++     *
++     * The Q20 is exactly that reduced keyboard, and there is no composed
++     * Unicode property to read -- SCREEN_PROPERTY_UNICODE does not exist in
++     * this SDK. So the main key symbol is the character. The alternate symbol
++     * is delivered separately so a host that wants Alt-chords can read it.
++     */
++    int symbol_for_text = 0;
++    if (screen_get_event_property_iv(event, SCREEN_PROPERTY_KEY_SYM, &symbol_for_text) == 0) {
++      symbol_for_text = text_codepoint_for_key(symbol_for_text);
++      if (symbol_for_text == 0) return;
++      unsigned char encoded[4];
++      int length = encode_utf8(encoded, (unsigned int)symbol_for_text);
++      if (length > 0) {
++        pocket_runtime_push_text(encoded, (size_t)length);
++        /* Recorded so the input path can be verified from a shell without
++         * looking at the screen: this file is the only place the host says
++         * what it actually saw. */
++        text_event_count += 1;
++        snprintf(last_text_hex, sizeof(last_text_hex),
++                 "U+%04X (%d bytes)", (unsigned int)symbol_for_text, length);
++      }
++    }
++  }
++}
++
++/* The key symbol is a codepoint; the runtime takes UTF-8 bytes. One
++ * codepoint is at most four bytes, and the surrogate range is not valid. */
++static int encode_utf8(unsigned char *out, unsigned int cp)
++{
++  if (cp == 0 || cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF)) return 0;
++  if (cp < 0x80) { out[0] = (unsigned char)cp; return 1; }
++  if (cp < 0x800) {
++    out[0] = (unsigned char)(0xC0 | (cp >> 6));
++    out[1] = (unsigned char)(0x80 | (cp & 0x3F));
++    return 2;
++  }
++  if (cp < 0x10000) {
++    out[0] = (unsigned char)(0xE0 | (cp >> 12));
++    out[1] = (unsigned char)(0x80 | ((cp >> 6) & 0x3F));
++    out[2] = (unsigned char)(0x80 | (cp & 0x3F));
++    return 3;
++  }
++  out[0] = (unsigned char)(0xF0 | (cp >> 18));
++  out[1] = (unsigned char)(0x80 | ((cp >> 12) & 0x3F));
++  out[2] = (unsigned char)(0x80 | ((cp >> 6) & 0x3F));
++  out[3] = (unsigned char)(0x80 | (cp & 0x3F));
++  return 4;
+ }
+ 
+ static void handle_touch(screen_event_t event, int type)
+@@ -356,6 +476,13 @@ static void handle_trackpad(screen_event_t event)
+   last_trackpad_y = position[1];
+   last_trackpad_buttons = buttons;
+   status_dirty = 1;
++  if(oma_super_down){
++    const char *direction=NULL;
++    if(abs(displacement[0])>=abs(displacement[1])&&displacement[0])direction=displacement[0]>0?"right":"left";
++    else if(displacement[1])direction=displacement[1]>0?"down":"up";
++    if(direction){oma_super_used=1;pocket_runtime_shortcut(direction,8|(oma_super_mods&7));}
++    return;
++  }
+   /* Integer joystick displacement: every non-zero event is one focus pulse. */
+   pocket_input_relative(&input, (float)displacement[0], (float)displacement[1]);
+   primary = buttons != 0;
+@@ -399,6 +526,7 @@ static void handle_navigator_event(bps_event_t *event)
+       break;
+     case NAVIGATOR_WINDOW_INACTIVE:
+       app_active = 0;
++      oma_super_down=oma_super_used=oma_super_mods=0;
+       set_status("inactive", "window inactive");
+       break;
+     case NAVIGATOR_ORIENTATION_CHECK:
+@@ -427,6 +555,46 @@ static void handle_event(bps_event_t *event)
+   else if (domain == navigator_get_domain()) handle_navigator_event(event);
+ }
+ 
++/* Development-host evidence: capture only the empty first app frame. */
++static void capture_first_frame(void)
++{
++  FILE *file;
++  unsigned char *pixels;
++  int x, y;
++  if (surface_width <= 0 || surface_height <= 0 || surface_width > 2048 || surface_height > 2048) return;
++  pixels = malloc((size_t)surface_width * (size_t)surface_height * 4);
++  if (pixels == NULL) return;
++  glFinish();
++  glReadPixels(0, 0, surface_width, surface_height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
++  if (glGetError() != GL_NO_ERROR) { free(pixels); return; }
++  file = fopen("data/omaberry-first-frame.ppm", "wb");
++  if (file != NULL) {
++    fprintf(file, "P6\n%d %d\n255\n", surface_width, surface_height);
++    for (y = surface_height - 1; y >= 0; y--) {
++      for (x = 0; x < surface_width; x++) {
++        fwrite(pixels + ((size_t)y * surface_width + x) * 4, 1, 3, file);
++      }
++    }
++    fclose(file);
++  }
++  free(pixels);
++  if (frame_count > 0) {
++    const unsigned char *cpu = pocket_runtime_render();
++    unsigned int w = pocket_runtime_width(), h = pocket_runtime_height();
++    unsigned int stride = pocket_runtime_stride();
++    file = cpu == NULL ? NULL : fopen("data/omaberry-software-frame.ppm", "wb");
++    if (file != NULL) {
++      fprintf(file, "P6\n%u %u\n255\n", w, h);
++      for (y = 0; y < (int)h; y++) for (x = 0; x < (int)w; x++) {
++        const unsigned char *pixel = cpu + (size_t)y * stride + x * 4;
++        unsigned char rgb[3] = {pixel[2], pixel[1], pixel[0]};
++        fwrite(rgb, 1, 3, file);
++      }
++      fclose(file);
++    }
++  }
++}
++
+ static int render_frame(void)
+ {
+   PocketInputSample sample;
+@@ -441,12 +609,21 @@ static int render_frame(void)
+   frame.touch_hit = sample.touch_down
+     ? pocket_runtime_hit_test_bounds((float)frame.touch_x, (float)frame.touch_y)
+     : 0;
++  if(!app_active)memset(&frame,0,sizeof(frame));
+   if (!pocket_runtime_tick(&frame)) {
+     set_error(pocket_runtime_error());
+     return 0;
+   }
+-  if (!pocket_runtime_gl_render(surface_width, surface_height) ||
+-      !eglSwapBuffers(egl_display, egl_surface)) {
++  if(!app_active)return 1;
++  if (!pocket_runtime_gl_render(surface_width, surface_height)) {
++    set_error("OpenGL ES rendering failed");
++    return 0;
++  }
++  if (frame_count == 0 || capture_requested) {
++    capture_requested = 0;
++    capture_first_frame();
++  }
++  if (!eglSwapBuffers(egl_display, egl_surface)) {
+     set_error("OpenGL ES frame presentation failed");
+     return 0;
+   }
+@@ -467,6 +644,7 @@ int main(int argc, char **argv)
+   bps_event_t *event = NULL;
+   int exit_code = EXIT_FAILURE;
+   (void)argc;
++  signal(SIGUSR1, request_capture);
+ 
+   initialize_executable_directory(argv == NULL ? NULL : argv[0]);
+   pocket_input_init(&input, 1.0f);
+@@ -475,6 +653,8 @@ int main(int argc, char **argv)
+     set_error("bps_initialize failed");
+     goto cleanup;
+   }
++  set_status("starting", "graphics initialization");
++  write_status();
+   if (!initialize_graphics()) goto cleanup_bps;
+   if (screen_request_events(screen_context) != BPS_SUCCESS ||
+       navigator_request_events(0) != BPS_SUCCESS) {
+@@ -485,6 +665,8 @@ int main(int argc, char **argv)
+     set_error("cannot read packaged app.js or app.pak");
+     goto cleanup_graphics;
+   }
++  set_status("starting", "runtime boot");
++  write_status();
+   if (!pocket_runtime_boot(
+         (const char *)java_script.bytes,
+         java_script.length,
+@@ -501,11 +683,11 @@ int main(int argc, char **argv)
+     set_error("PocketJS GLES2 backend initialization failed");
+     goto cleanup_runtime;
+   }
+-  set_status("running", "Hero mounted");
++  set_status("running", "OmaBerry desktop mounted");
+   write_status();
+ 
+   while (!app_shutdown) {
+-    int timeout = app_active ? 0 : -1;
++    int timeout = app_active ? 0 : pocket_runtime_background_busy() ? 100 : -1;
+     if (bps_get_event(&event, timeout) != BPS_SUCCESS) {
+       set_error("bps_get_event failed");
+       break;
+@@ -523,6 +705,7 @@ int main(int argc, char **argv)
+       } while (event != NULL && !app_shutdown && app_active);
+       if (!app_shutdown && !render_frame()) app_shutdown = 1;
+     } else {
++      if(pocket_runtime_background_busy()&&!render_frame())app_shutdown=1;
+       write_status();
+     }
+   }
+diff --git a/tools/blackberry-qnx.ts b/tools/blackberry-qnx.ts
+index 344af48..e8d1798 100644
+--- a/tools/blackberry-qnx.ts
++++ b/tools/blackberry-qnx.ts
+@@ -287,7 +287,7 @@ function buildRuntime(): void {
+   copyFileSync(bundle.javaScript, join(nativeBuild, "staging/app.js"));
+   copyFileSync(bundle.pack, join(nativeBuild, "staging/app.pak"));
+   copyFileSync(
+-    join(repository, "assets/images/logo.png"),
++    join(repository, "hosts/blackberry-classic-qnx/icon.png"),
+     join(nativeBuild, "staging/icon.png"),
+   );
+   const identity = packageIdentity(bundle.inputs.app);
+diff --git a/tools/blackberry-qnx/build.sh b/tools/blackberry-qnx/build.sh
+index 43e4046..ae5e009 100755
+--- a/tools/blackberry-qnx/build.sh
++++ b/tools/blackberry-qnx/build.sh
+@@ -116,6 +116,10 @@ first_party_flags=(
+ "$readelf" -h -l -A -d "$staging/pocketjs-classic" > /build/pocketjs-classic.readelf.txt
+ "$nm" -g "$staging/pocketjs-classic" > /build/pocketjs-classic.symbols.txt
+ 
++cp /repo/apps/blackberry-classic-demo/pinyin.json "$staging/pinyin.json"
++cp /repo/apps/blackberry-classic-demo/Tokyo-Liftoff-*.txt "$staging/"
++cp /repo/apps/blackberry-classic-demo/OFL-NotoSansSC.txt "$staging/OFL-NotoSansSC.txt"
++
+ cd "$staging"
+ blackberry-nativepackager \
+   -package /build/pocketjs-blackberry-classic-hero.bar \
+diff --git a/tools/build.ts b/tools/build.ts
+index d4e4f49..54f2950 100644
+--- a/tools/build.ts
++++ b/tools/build.ts
+@@ -387,16 +387,18 @@ const { fallbackTtfs } = fontConfig;
+ if (fallbackTtfs.length || fontConfig.codepoints.length)
+   console.log(`  fonts: ${fallbackTtfs.length} fallback face(s), ${fontConfig.codepoints.length} declared characters`);
+ 
+-const atlases = await bakeAtlases({
+-  codepoints: new Set([...codepoints, ...fontConfig.codepoints]),
+-  slots: styles.usedFontSlots,
++const declaredSlots = fontConfig.slots ?? styles.usedFontSlots;
++const bakeSlots = async (slots: number[], declared: boolean) => slots.length ? bakeAtlases({
++  codepoints: new Set([...codepoints, ...(declared ? fontConfig.codepoints : [])]),
++  slots,
+   extraChars,
+   rasterDensity,
+   regularTtf: regularFontPath,
+   boldTtf: boldFontPath,
+   onRead: path => buildInputs.add(path),
+   fallbackTtfs,
+-});
++}) : [];
++const atlases = [...await bakeSlots(styles.usedFontSlots.filter(s=>!declaredSlots.includes(s)), false), ...await bakeSlots(styles.usedFontSlots.filter(s=>declaredSlots.includes(s)), true)];
+ for (const a of atlases) {
+   console.log(
+     `  font: slot ${a.slot} (${a.px}px${a.bold ? " bold" : ""}) ${a.glyphCount} glyphs, ` +
+diff --git a/hosts/blackberry-classic-qnx/text_key.h b/hosts/blackberry-classic-qnx/text_key.h
+new file mode 100644
+index 0000000..d0d540b
+--- /dev/null
++++ b/hosts/blackberry-classic-qnx/text_key.h
+@@ -0,0 +1,16 @@
++#ifndef OMABERRY_TEXT_KEY_H
++#define OMABERRY_TEXT_KEY_H
++
++/* Keep text editing separate from the portable game button mask. */
++static int text_codepoint_for_key(int symbol)
++{
++  if (symbol == KEYCODE_BACKSPACE) return 0x08;
++  if (symbol == KEYCODE_RETURN) return 0x0A;
++  if (symbol < 0x20 || (symbol >= 0x7F && symbol <= 0x9F)) return 0;
++  if (symbol > 0x10FFFF || (symbol >= 0xD800 && symbol <= 0xDFFF)) return 0;
++  /* The QNX function keys occupy this private-use range. */
++  if (symbol >= 0xE000 && symbol <= 0xF8FF) return 0;
++  return symbol;
++}
++
++#endif
+diff --git a/framework/src/text-input.ts b/framework/src/text-input.ts
+new file mode 100644
+index 0000000..12dba29
+--- /dev/null
++++ b/framework/src/text-input.ts
+@@ -0,0 +1,58 @@
++/**
++ * Typed text reaching the guest.
++ *
++ * The frame wire carries a button mask and touch contacts. A host with a real
++ * keyboard has nowhere to put characters -- the Q20 can only report Space as
++ * START and Menu as TRIANGLE, which is why typing has never reached an app.
++ * The host queues UTF-8 bytes and the runtime hands them over as the ninth
++ * argument of `frame()`, after every parameter the guest already declares.
++ *
++ * This module is the guest-side latch, shaped like `touch.ts`: the composed
++ * frame handler calls `__setText` before app frame hooks run, and app code
++ * reads the snapshot for that frame. It is per-frame rather than an event
++ * stream because the frame is the only moment the host guarantees ordering --
++ * `docs/RUNTIMES.md` law 3 is one guest turn per presented frame.
++ *
++ * Nothing here is consumed implicitly. A text field, a terminal and a game
++ * all want characters differently, and a game that never reads `textPending`
++ * should not have text routed into its input stack.
++ */
++
++const EMPTY: readonly string[] = Object.freeze([]);
++
++let pending: readonly string[] = EMPTY;
++
++/**
++ * Latch the text typed since the previous frame. Called once per frame, before
++ * app frame hooks. An empty or absent array clears the latch.
++ */
++export function __setText(text: readonly string[] | undefined): void {
++  pending = text && text.length > 0 ? text : EMPTY;
++}
++
++/**
++ * The characters typed for this frame, as UTF-8 strings. A single string is
++ * usually one keypress but may be several bytes (a CJK codepoint) or a pasted
++ * chunk, so read the string rather than assuming a length.
++ */
++export function textPending(): readonly string[] {
++  return pending;
++}
++
++/**
++ * Characters typed this frame, and clear them.
++ *
++ * For a component that wants each frame's text exactly once without having to
++ * pair a read with a clear. Everything that ran after the first caller sees an
++ * empty list, which is the intent.
++ */
++export function textConsume(): readonly string[] {
++  const taken = pending;
++  pending = EMPTY;
++  return taken;
++}
++
++/** Drop any unconsumed text. */
++export function resetTextInput(): void {
++  pending = EMPTY;
++}

@@ -1,0 +1,98 @@
+{
+  "source": "https://github.com/tcballard/omarchy-theme-tokyo-liftoff",
+  "revision": "24186fb5eaae69477ef37866e9fe41f2f42b5f46",
+  "assets": [
+    {
+      "source": "01-liftoff-sunset.png",
+      "source_sha256": "0e18ec30ef7c3cd29345626e6509e47ed717f410606aff288c72f0ed6b81313c",
+      "tiles": [
+        {
+          "asset": "tokyo-1-tl.png",
+          "sha256": "978b968d917783e16d2df3b983ab841d13a978f126a873c74f7524367865f8dd"
+        },
+        {
+          "asset": "tokyo-1-tr.png",
+          "sha256": "d258fb3e71ab0a64b201bcf6f224f08a81f271068146a635ceecaa5fefa70055"
+        },
+        {
+          "asset": "tokyo-1-bl.png",
+          "sha256": "9e640e8330c553a1d6a435b673fbbf5d766ff6e0158f82d9743adb1dc14a806a"
+        },
+        {
+          "asset": "tokyo-1-br.png",
+          "sha256": "5ec8577ff2aa272224f5d3ac110c58f7484bfc980d4d7a816a3759ba3e09c22f"
+        }
+      ],
+      "transform": "Proportional resize to height 1024, center crop 1024×1024, four lossless 512×512 tiles rendered over the 720×720 screen. No color/content edits."
+    },
+    {
+      "source": "02-starship-ascent.png",
+      "source_sha256": "f4c3fc6971a5fa289df3afdfb181c7f00668251f3c6d26ecc1de26b96ff8242f",
+      "tiles": [
+        {
+          "asset": "tokyo-2-tl.png",
+          "sha256": "be8122963b5d30c3d22b56ce0c95dbc18f36cc2faf30f507dc28acb6ba8fac84"
+        },
+        {
+          "asset": "tokyo-2-tr.png",
+          "sha256": "4e6647f4c68a301ed972fad3d74d76044629d29c0e95ea0990c678eab3f59361"
+        },
+        {
+          "asset": "tokyo-2-bl.png",
+          "sha256": "84267963f32d6140cbe60eaeb6ddcfbc706336738401c784dd12ab15155e4fc9"
+        },
+        {
+          "asset": "tokyo-2-br.png",
+          "sha256": "9893174c9705933d4dbe9e9d83e888775a1dd2bbbd0adffb3a36f8da58422ecb"
+        }
+      ],
+      "transform": "Proportional resize to height 1024, center crop 1024×1024, four lossless 512×512 tiles rendered over the 720×720 screen. No color/content edits."
+    },
+    {
+      "source": "03-golden-liftoff.png",
+      "source_sha256": "c84f46e958203262b3ea8f7f90fcf21eb3f939304c17e04e99ced21857f2a137",
+      "tiles": [
+        {
+          "asset": "tokyo-3-tl.png",
+          "sha256": "09361bde8c7535e3ab2b68d12063021559f1b689f308471d26421bba765d803b"
+        },
+        {
+          "asset": "tokyo-3-tr.png",
+          "sha256": "d5220a6c568c523761750ad2246508c7cec14d53256d79339beb35987ab7fe11"
+        },
+        {
+          "asset": "tokyo-3-bl.png",
+          "sha256": "924a0c2a81e025b6e750df7dddc26227a5c8469656a57b6eda43fa4b880b8c85"
+        },
+        {
+          "asset": "tokyo-3-br.png",
+          "sha256": "1490bcbe78f082a46ae20cc7dacc1057e4a50540ac70b566204fe5ad234f4ef2"
+        }
+      ],
+      "transform": "Proportional resize to height 1024, center crop 1024×1024, four lossless 512×512 tiles rendered over the 720×720 screen. No color/content edits."
+    },
+    {
+      "source": "04-engine-cluster.png",
+      "source_sha256": "f00948eeac36083128533548f61a78ff66e9ab6cb613f953b4e67e89bfa1f319",
+      "tiles": [
+        {
+          "asset": "tokyo-4-tl.png",
+          "sha256": "edc0fbe76a602fbe771a2ffdcc1a2dbc8c1907fc926c621473b5fa46a40ecfb7"
+        },
+        {
+          "asset": "tokyo-4-tr.png",
+          "sha256": "8517c1db04af13f111105ad50ebac48a31d0afc11f7070baac0b496377da395b"
+        },
+        {
+          "asset": "tokyo-4-bl.png",
+          "sha256": "32ea8226eacd0a4987b6224a63093b45a6a70f72983671aef78c3100ef73c2d9"
+        },
+        {
+          "asset": "tokyo-4-br.png",
+          "sha256": "417ed68d1b2b5bdff01571081eb4b43c9f634ac3f7ae581289c72a804ea03f5e"
+        }
+      ],
+      "transform": "Proportional resize to height 1024, center crop 1024×1024, four lossless 512×512 tiles rendered over the 720×720 screen. No color/content edits."
+    }
+  ]
+}

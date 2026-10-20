@@ -1,249 +1,140 @@
-# OmaBerry Native — P0 audit
+# OmaBerry native migration
 
-Status of the migration from the Berry Browser shell to a PocketJS native QNX
-host. This records what was **actually built and installed**, and separates it
-from what is still an intention. Anything not marked verified has not been
-run.
+Current development is **PocketJS native only**. Version 0.8.1 uses the supplied OmaBerry logo in the top-left menu trigger and BB10 launcher. The desktop has ten workspaces, recursive tiling, BerryCore PTYs, Files, Notes, Chinese Chat, local DeepSeek tools and a herdr workspace sidebar. The old browser app was removed from the development phone; browser sources remain historical.
 
-## P0 verdict: the toolchain works
+This document is a chronological verification record. Descriptions under older versions refer to those versions, not the current interface. Use the [project README](../README.md), [native guide](../native/README.md) and [shortcut map](NATIVE-SHORTCUTS.md) for current behavior.
 
-The blocking question was whether a native QNX build needs the proprietary
-QNX SDP — the same wall berrybrowser-cjk hit when rebuilding Chromium. It
-does not. PocketJS pins a Docker image and drives it from `bun`.
+## Reproducible source and build
 
-Verified on this machine (Apple Silicon macOS):
+The pinned revision, complete patch, build commands and acceptance checks are in [native/README.md](../native/README.md). `scripts/native.py` prepares a persistent ignored checkout and copies BAR/receipt outputs into `out/native`. The OpenCode temporary checkout is no longer required.
 
-| Prerequisite | Result |
-| --- | --- |
-| Docker daemon | 29.2.1, aarch64 |
-| `accupara/bbndk` pinned image | pulled, `blackberry-nativepackager 1.11` inside |
-| Rust `nightly-2026-07-02` + `rust-src` | installed |
-| `pocket-nexus/quickjs-rs` pinned revision | `ba5bdd0` |
-| `armv7-qnx-eabi.json` target | present |
-| QNX compiler | `4.8.3,gcc_ntoarmv7le` (inside the container) |
+P0 established the BBNDK Docker → Rust/QuickJS → ARM ELF → BAR build path and an initial Hero rendering on the Q20. The text input changes extend the C runtime with a bounded UTF-8 queue, passed after the guest's eight existing frame parameters. The ninth argument feeds a guest latch through `framework/src/text-input.ts`.
 
-`bun install` is a separate step from `bun blackberry-qnx setup`: the latter
-only prepares the toolchain, and the guest bundle build fails without the npm
-dependencies (`@vue/compiler-dom` missing via `@vue/compiler-vapor`).
+The input preview now accepts space, normalizes QNX Backspace and Return, rejects navigation symbols, removes complete Unicode scalars, and records a guest `text_input` action. It uses `onFrame` rather than an untransformed asynchronous polling loop. The devtools frame wrapper forwards argument 9; the previous wrapper discarded text before it reached the guest latch. Host startup status distinguishes graphics initialization and runtime boot.
 
-## P0 verdict: it builds and it installs
+## Evidence boundaries
 
-```
-$ bun blackberry-qnx build
-PocketJS BlackBerry QNX: Hero BAR -> dist/blackberry-qnx/pocketjs-blackberry-classic-hero.bar
-SHA-256: d1487f01f0b0182be9c2bb94f34fd3b394c51a47da09481ca6e9afd0ab8497df
-```
+Build, install, process launch, frame presentation, host keyboard events and guest text consumption are distinct checks. A stopped status file from an older build does not establish the behavior of a newly installed build. Use `build_id` and the receipt to identify the tested binary.
 
-| | |
-| --- | --- |
-| BAR | 819 KB, six entries |
-| `native/pocketjs-classic` | 1.2 MB, ELF header confirmed |
-| `native/app.js` | 203 KB guest bundle |
-| `native/app.pak` | 4.0 MB — packed assets and the compiled style table |
-| install on the rooted Q20 | `result::success` |
-| installed path | `/apps/dev.pocket_nexus.blackberry_classic_demo.testDev_lassic_demo45ec1699` |
+Earlier notes claimed that direct pathtrust registration never worked and that a persistent flash flag was the only remaining route. Those conclusions were not established. During the October 19 recovery, registering the existing node binary and its shared libraries through a functioning root bridge allowed Node 22 to run. The BerryCore wrapper also failed when its `dirname` dependency could not execute; `scripts/run-qnx.sh` invokes the binary without that dependency. No persistent debug flag is needed by the project launch path.
 
-The size comparison is the point of the exercise: 819 KB against the 65 MB
-Berry Browser repack. There is no Chromium in the package.
+## Initial native milestones (historical, October 19)
 
-**Verified on the device:** the app launches and renders. The last gap in P0
-is closed — the chain is build → package → install → run, all observed.
+1. Verify Space, Backspace and Return on the device; ASCII typing and guest consumption are verified.
+2. Validate the Desk / Notes / Status prototype on the device, including focus navigation and draft retention.
+3. Add a native transport to the existing shell, file and agent services.
+4. Implement terminal rendering, CJK glyph coverage and composition.
+5. Reconcile the extended input contract/profile with upstream and validate lifecycle, resume, trackpad and delivery.
 
-Verified separately: `node` cannot be executed from an SSH session while the
-same binary runs from Term49. The rule is that scripts run (sh interprets
-them) and binaries are refused (`Operation not permitted`) even for
-BAR-installed executables like `content_shell.exe`. It is an execution-context
-difference, not a per-binary blocklist entry.
+The portable button mask is retained alongside text. Space still maps to the existing game button, while text consumers receive a space. This preview does not introduce an incompatible struct layout for other hosts.
 
-## The input gap is narrower than it looked
+## October 19 validation
 
-The plan assumed Chinese input would need a new contract. It does not — the
-contract exists and is already implemented. What is missing is the channel
-between the two.
+The browser service runs on the Q20 at loopback port 9820. HTTP delivery and the Agent WebSocket were checked through an SSH tunnel. A local mock provider completed a Chinese-text UI round trip. The real MiMo request returned HTTP 402; the service remained available. The native `http/https` transport avoids the `fetch`/WebAssembly crash in BerryCore's `--jitless` runtime.
 
-| Layer | Text / IME |
-| --- | --- |
-| `contracts/spec/ime.ts` | `ImeCandidatePage`, candidate slots, selection key range |
-| `contracts/spec/text.ts` | `TextFace`, `TextGlyphRequest` |
-| `engine/quickjs-c/pocket_runtime.c` | implemented (88 `ime` and 186 `text` references) |
-| `hosts/blackberry-classic-qnx/main.c` | **absent** |
+Native preview 0.1.4 built with SHA-256 `07cc01a8597f08509f5d4d0441c78dbc11c0cd5e4ea3ce27dafef2e553d6b5d9` and installed with `result::success`. Its status identifies build `93c55e9456edc3c898bc7524c3f8b767` and reached `stage=running`. Physical ASCII typing is verified for this build: the user confirmed that typing `abc` changes the headline to `abc`. Device status records 1516 frames, 60 keyboard events, 30 host text events, `last_text=U+0063`, and the guest action `text_input` with value 30. The subsequent inactive state records the window moving to the background. An earlier build received host key events but discarded the ninth argument in the devtools wrapper.
 
-The public C API in `engine/quickjs-c/pocket_runtime.h` offers only
-`PocketRuntimeInput` — a button mask and a touch snapshot:
+Server, Agent receipts, WebSocket close/ping, jitless HTTP, guest text-buffer and frame-wrapper tests pass. A C input-normalization test passes with `-Wall -Wextra -Werror`, and the complete patch applies to a clean snapshot of the pinned source.
 
-```
-pocket_runtime_boot(...)
-pocket_runtime_tick(PocketRuntimeInput *input)
-pocket_runtime_tick_contacts(...)
-pocket_runtime_frame(...)
-pocket_runtime_gl_initialize / render / shutdown
-```
+## Native desktop prototype 0.2
 
-So Phase 1 is **not** a new contract. It is extending the host ABI to carry
-characters and IME events from QNX BPS keyboard events into a runtime that
-already knows how to consume them. The docs register the target as
-`blackberry-qnx-dev`, **host ABI 9**, so this means bumping the ABI version
-rather than inventing one.
+The Hero layout is replaced by an OmaBerry start page, a Notes page and a runtime-status page. `native/src` holds the application source; the pinned PocketJS patch contains the host and framework changes. Notes accepts text only while its page is selected, keeps a bounded session draft across page changes, and supports Clear. Return activates focused controls without inserting spaces. No shell or model execution is implied by the interface.
 
-What the QNX host feeds today, per `docs/BLACKBERRY_CLASSIC.md`:
+The native prototype supports a foreground-app framebuffer capture for layout verification; this is development evidence, not a screen capture of other apps. Runtime receipts and screenshots remain ignored artifacts.
 
-| Physical input | Portable input |
-| --- | --- |
-| trackpad movement | d-pad pulse per threshold crossing of accumulated motion |
-| trackpad click | the press button (`CIRCLE`) |
-| Enter / d-pad centre | the press button |
-| arrow keys | d-pad |
-| Space | `START` |
-| Menu | `TRIANGLE` |
-| Send | one-shot press edge |
-| Back, End | stay with the system |
+Native 0.2.1 built with SHA-256 `2cdee259520ec4ba5cdf21987f1563405558615e7ae6be0fd5acf3c826493499` and installed with `result::success`. A clean single-instance launch was checked. GPU framebuffer readback after `glFinish` and the software-rendered scene both contain the complete Desk layout; unsynchronized readbacks had produced partial or blank diagnostic images. Synchronization is limited to explicit captures/startup evidence, not the normal presentation loop. The Notes input-gating, Unicode backspace, Enter behavior and Clear logic pass automated tests. Physical Notes input, Backspace and cross-page draft retention are verified: the user typed `abc`, deleted `c`, switched to Desk and back to Notes, and confirmed `ab` remained. Build `d43168708b8532e792b30d269c9e52f7` recorded 1079 frames, 8 keyboard events, 4 text events, last text U+0008, and `desktop_page=1` on return to Notes. Clear, Space and Enter still need separate physical acceptance.
 
-There is no character input anywhere in that table. The target also stays
-outside `POCKET_TARGETS` until installation, boot, presentation, touch,
-keyboard, trackpad, background/resume and repeatable delivery are all
-recorded — so it is not yet a validated target in upstream terms either.
+`python3 scripts/native.py launch` closes only processes whose command exactly matches the prototype package identity and requests a clean launch. Old native development instances had survived package replacement, so package installation alone is not used as a restart guarantee. Restarting discards session-only notes.
 
-## Phase 1: text input is now in the ABI
+## October 20 native terminal
 
-Written and built, not yet observed on a device. The patch is
-[`docs/upstream/pocketjs-text-input.patch`](upstream/pocketjs-text-input.patch)
-(222 lines, 149 insertions across four files).
+Native 0.3 adds a direct PTY bridge to `/bin/ksh` and BerryCore's environment. `native/host` contains the terminal core and QuickJS binding, copied by `scripts/native.py`; the pinned patch installs the binding, routes focused terminal keys, and requests Shared Files permission. Notes no longer consumes input while inactive, allowing the terminal to use the same bounded host text queue. Return and Space no longer activate navigation controls while the terminal captures the keyboard. Menu returns control to navigation.
 
-**`pocket_runtime_push_text(const uint8_t *, size_t)`** queues UTF-8 bytes; the
-queue drains into the **fifth argument** of the guest's `frame()` call.
+The screen is a bounded 42×11 monochrome grid with basic ANSI cursor/erase handling. The shell process survives page switches, with output consumed each frame even while Term is hidden. Restart and runtime shutdown close the session. This is not complete VT/full-screen/CJK support.
 
-That shape is the whole compatibility argument. A struct change to
-`PocketRuntimeInput` would have been an ABI break for all eleven hosts, where
-adding a trailing argument keeps every existing consumer correct.
+Device evidence: the app displayed real command output for `pwd` and `whence python3`; Python returned `True` for `os.isatty(0)`. Shared Files permission was required and the user confirmed allowing it. The diagnostic screen showed the shared working directory and BerryCore Python path. Initial PTY linkage through the non-PIC archived libc object prevented launch; the final bridge uses QNX's dynamic process/TTY primitives instead. Diagnostic commands are confined to a temporary test guest and are removed from the deliverable.
 
-**The slot it goes in matters more than the shape.** The first draft passed
-text as the fifth argument. Reading `framework/src/host.ts` showed the guest's
-`frame()` already declares eight parameters —
+Final 0.3.0 BAR SHA-256: `be441dbe976307929b035e6a6578ef8651a941d40a2815ee19b16074fb70727d`; build `7522bb05ca38038cf0a677e548166f8b`. Installer returned `result::success`, the installed guest hash matches the build receipt, and the final app reached `stage=running`. The final ELF has no text relocations.
 
-```
-frame(buttons, analog, touches, hits, touchSurfaces, rightAnalog, axisDeltas, motion)
-```
+Physical acceptance for native 0.3.0: the user entered `cd /tmp`, pressed Return, used Menu to navigate to Desk and back to Term, then entered `pwd`. The user confirmed output `/tmp`. This verifies physical command input, Return, Menu navigation and preservation of the live shell working directory across page changes.
 
-— while the C layer only ever passed the first four. So the fifth slot is
-`touchSurfaces`, and a text array landing there would have been read back as
-touch surface data and silently corrupted touch input. Text is now appended
-**after the last declared parameter**, as the ninth argument, with the four
-in-between slots passed as `JS_UNDEFINED`.
+## October 20 native file browser 0.4
 
-The queue is bounded and lossy on overflow (64 slots × 24 bytes, split long
-input rather than truncating it). A keyboard cannot outrun a frame.
+Files browses the BerryCore directory through a direct native read-only API. It sorts folders first, follows symbolic links for browsing/reading, and pages both directory rows and text previews. File contents are bounded to 64 KiB; binary and special files have distinct handling. Navigation and preview state survive switches to other native pages, without consuming terminal or Notes input.
 
-### What QNX actually gives you for text
+Portable C tests cover real directory listing, hidden entries, links, text/binary reads, missing/special files and a bounded UTF-8 cut. Controller tests cover paging, parent/home navigation, paths with spaces, Unicode wrapping and error views. On the Q20, the temporary diagnostic guest traversed `etc`, returned to BerryCore and opened the real README; status recorded `files_open=2066` and the framebuffer showed file content and page 1/9.
 
-The first attempt used `SCREEN_PROPERTY_UNICODE`. **It does not exist in
-BBNDK 10.3.1** — the build failed on an undeclared identifier. Pulling the
-header out of the pinned image and reading it is what settled it. The real
-surface is `KEY_SYM`, `KEY_ALTERNATE_SYM`, `KEY_CAP`, `KEY_SCAN`, `KEY_FLAGS`,
-`KEY_MODIFIERS`, `MODIFIERS`.
+0.4.0 BAR SHA-256: `c39bb5adbc797af870beed5fbba648245e015b7cc129a3b1e1a9cad60c6a5d1b`; build `2ee07b114ff7a1ac0b12dc29e11afd75`. Installer returned `result::success`.
 
-screen.h, on `SCREEN_PROPERTY_KEY_ALTERNATE_SYM`, describes the Q20 exactly:
+The final 0.4 guest adds case-insensitive filename filtering from the physical keyboard. Back clears the filter, and directory changes clear it automatically. Search uses page-gated text input, preserving the existing Notes and terminal input paths.
 
-> On reduced keyboards with a limited number of keys, the alternate key symbol
-> may correspond to a non-printable shortcut or command symbol while the main
-> key symbol would be suitable for text entry.
+Final install verification: the application reached `stage=running`; both installed guest JavaScript and font-pack hashes match the final build receipt. The normal guest starts at Desk and has no automatic file-opening diagnostics.
 
-So the **main `KEY_SYM` is the character**, and `KEY_ALTERNATE_SYM` is the
-Alt-chord variant — which matches what the Q20 does today, where Alt+F arrives
-as `6`. The host now encodes `KEY_SYM` to UTF-8 and pushes it on key-down and
-key-repeat.
+Physical acceptance for native Files 0.4.0: the user opened Files, typed `readme`, selected and opened README, used Next to read another page, and used Back to return to the list. The user confirmed all steps worked. This verifies physical filename filtering, file selection/opening, preview pagination and return navigation.
 
-### Verified
+## Native 0.5: DeepSeek and herdr
 
-- builds: `bun blackberry-qnx build` → `pocketjs-blackberry-classic-hero.bar`
-- `pocket_runtime_push_text` is present in the linked ELF
-- BAR grew about 0.5 KB
-- installs on the rooted Q20: `result::success`
+The native app adds DeepSeek chat plus a Q20 adaptation of herdr's workspace interface. Three independent PTYs retain their working directories and screens, while drafts/history are isolated per workspace. The existing terminal input capture still releases with Menu. Notes/Status move to Desk so the primary navigation fits the display.
 
-### Not verified
+DeepSeek transport uses the existing trusted BerryCore curl binary, verified HTTPS, an unlinked private config on stdin, separate nonblocking output/error pipes, bounded response buffering, cancellation and timeout. Credentials live in the app's private data directory, outside the distributable. Only explicit chat text/context is sent; no file or shell tools are exposed to the model. The provider model list was queried successfully with the user's key and returned deepseek-flash/deepseek-v4-pro.
 
-That typing a character reaches the app. This needs the app on the device to
-read the new `frame()` argument and do something with it; the Hero demo does
-not, so the pipeline is there and unexercised.
+The herdr view is a native workspace adaptation, referenced against herdrdev/herdr; it does not claim that the upstream Rust runtime or agent CLIs were ported. Tests cover actual simultaneous PTYs, working-directory isolation, background AI replies associated with their originating workspace, context, provider refusal, cancellation, response limits and Chinese text wrapping.
 
-## Phase 1: the guest side now has a latch
+Device verification for 0.5: a native DeepSeek completion returned a real 24-character reply (`chat_reply=24`). The native UI rendered the Chinese diagnostic prompt with Noto glyphs. A temporary guest ran three PTYs and checked their output for distinct working directories `/`, `/tmp`, and `/accounts/1000/shared/misc/berrycore`; status recorded `herdr_isolated=3`. The corrected herdr sidebar layout was inspected on the native framebuffer. These automatic diagnostics are absent from the final guest.
 
-`framework/src/text-input.ts` is the guest-side counterpart, shaped like the
-existing `touch.ts`: the composed frame handler calls `__setText(text)` before
-app frame hooks run, and app code reads `textPending()` or consumes once with
-`textConsume()`.
+Final 0.5.0 BAR SHA-256: `95167946fcb990d33dd811d66dcd7b12e32b00cba71c13d0a8df2b5e6d6c3963`; build `cd179cafdd79c30488a9f163f40b07e6`. The packaged guest contains neither the key nor diagnostic submissions.
 
-Nothing is consumed implicitly. A terminal, a text field and a game want
-characters differently, and a game that never calls `textPending` should not
-have text routed into its input stack. The snapshot is per-frame rather than
-an event stream because the frame is the only moment the host guarantees
-ordering — `docs/RUNTIMES.md` law 3.
 
-This also confirms the additive approach is the codebase's own habit. The
-doc comment on `installFrameHandler` says of the analog parameter: *"Hosts
-without a stick pass one argument; the runtime defaults to center, so every
-pre-analog host, tape and golden is unchanged."* Adding a trailing parameter
-is exactly how this ABI has grown before.
+## Native 0.5.1: offline Chinese input
 
-Verified: the whole chain compiles — C queue, ninth argument, host keyboard
-wiring, TS latch — into a BAR. Not verified: that typing reaches an app. The
-Hero demo does not read `textPending`, so the channel is built and
-unexercised.
+Physical 0.5.0 acceptance: the user confirmed DeepSeek chat works and Chinese replies display correctly; Chinese typing was missing. Version 0.5.1 adds a local Pinyin composer to Chat, with CN/ABC switching, visible candidates, Space/Enter commit, digit/arrow selection and Unicode backspace. C host input suppresses navigation activation while composing so Enter confirms the candidate. Draft and preedit state are independent for Main, Build and Scratch. The dictionary is packaged as a JSON asset, keeping candidate text out of the compiler's general font slots.
 
-Patch: [`docs/upstream/pocketjs-text-input.patch`](upstream/pocketjs-text-input.patch),
-311 lines across six files.
+Final 0.5.1 BAR SHA-256: `52d841c9cd8ce59d744ab8a317a3c2f022036ded2064d84c029654da3c1ee4f1`; build `3c61b56f77c2f8d445d56ff78968383a`. Installer returned `result::success`. A temporary native guest loaded the packaged dictionary, composed and committed 你好 (`ime_verified=2`), and displayed the 中文 candidate for `zhongwen`; the actual framebuffer was inspected. The diagnostic guest was removed and the installed JS/PAK restored to the production receipt hashes. Physical 0.5.1 acceptance passed: the user confirmed typing 你好, sending it, and receiving a reply.
 
-## Device notes from the rooted Q20
 
-The web shell is currently dead on the device and the cause is settled.
+## Native 0.6.0: Tokyo Liftoff desktop
 
-`node.bin` cannot be executed: `Operation not permitted`. Permissions are
-fine (`-rwxr-xr-x`), so this is **pathtrust**, BB10's execution allowlist. The
-default set trusts `/proc/boot` and `/base`; `/accounts` is not in it.
+The user prioritized the Tokyo Liftoff wallpaper and Omarchy-inspired phone desktop. The native home now has a full-screen wallpaper, compact workspace/clock bar, and terminal/files/chat/notes/herdr dock. Four upstream artworks are resized proportionally and center cropped to 1024×1024, then split into four 512×512 texture tiles for sharp rendering over the Q20’s 720×720 screen; the wallpaper button cycles the set and saves the choice atomically in the application's private data directory. App panels use the upstream Tokyo Night palette. Artwork provenance, source hashes and crop description are in native/tokyo-liftoff-assets.json; upstream credits and license notices are included in the BAR.
 
-Three ways out were tried and all failed:
+The user also rejected the current herdr implementation as an accurate port. This remains an open requirement. The current herdr view is a three-workspace launcher; upstream has a terminal multiplexer with pane splits, a detached session server, saved layouts, remote machines, agent status detection and a CLI/socket API. Neither its visual appearance nor its runtime behavior is at 1:1 parity. The wallpaper release does not satisfy that requirement. Native host and guest screenshots should be compared against the upstream screenshot only after the multiplexer UI and runtime work is complete.
 
-| Attempt | Result |
-| --- | --- |
-| `pathtrust "!<node.bin>"` direct | returns 0, has no effect — lockdown already active |
-| same, elevated through `/bin/__upd` (the route the BAR installer uses) | `open for '…' failed: 13` (EACCES) |
-| append to `/base/etc/rootfs.trusted` | `/base` is a read-only filesystem |
+Final 0.6.0 BAR SHA-256: `14f2be106a7fea1ff8831f52ba4c881184e808cda8896022077a7db121d66fe2`; build `a6999022213ea4ea11fccb872a6f07da`. PPS installer returned `result::success`. The actual 720×720 framebuffer shows the full-screen Liftoff Sunset wallpaper, Tokyo Night bar and five native app launchers. All 16 baked wallpaper texture payloads match source tiles, and the installed guest hashes match the final receipt. The user confirmed wallpaper cycling; an initial report that persistence failed was explicitly corrected to “保存了，我点错回答了”. Wallpaper persistence is therefore physically accepted. App launcher acceptance was not separately confirmed.
 
-The one remaining route is the persistent debug flag that `pathtrust.sh`
-checks at boot (`/proc/boot/persist-tool -dispathtrustenabled` returns 1, so
-it is not set). Setting it writes persistent flash, so it is left alone here
-and needs an explicit go-ahead.
 
-The clean fix is upstream: `scripts/install.sh` now registers `node` and
-`node.bin` with pathtrust alongside the launcher, so a fresh install registers
-them before lockdown. The web desktop stays unavailable until either that
-happens or the debug flag is set.
+## Native 0.7.0: Omarchy mobile style and tiling
 
-**The native path is unaffected.** BAR binaries are registered by the
-installer at install time, which is why the PocketJS demo installs and runs
-while node cannot.
+The shared desktop now follows the supplied Omarchy mobile references: a compact workspace/clock bar, monospace labels, original pixel wordmark, thin blue focus borders, dark translucent window backgrounds, and a searchable Applications panel over the saved Tokyo Liftoff wallpaper. This is the native Q20 application, not a Hyprland installation. The upstream mobile reference was inspected at derekross/omarchy-mobile revision `f1885a79a1709c8387ad32798c00cfc8f16afabd`; its “Show with…” flow informs the native + Tile action.
 
-## What Phase 1 still requires
+Four independent workspaces can each show two vertically stacked native windows. Title/content focus routes physical text to the correct app, [] maximizes, = restores, x hides the pane, and Menu opens the keyboard-searchable launcher even from a focused shell. A focus scope keeps the open launcher from activating background controls. Controls support touch and trackpad selection. Two Terminal windows use separate PTYs; shell slots survive hiding/workspace changes until application exit. Files, notes and Chinese chat have workspace-local state. File pagination and chat output adapt to available height.
 
-1. Feed QNX `SCREEN_EVENT_KEYBOARD` into a text path instead of only into the
-   button mask. Character semantics and key semantics have to stay distinct
-   (the mask maps Space to `START`, which is not what a terminal wants).
-2. Extend `contracts/spec/spec.ts` and regenerate `pocket_spec.h` /
-   the Rust side, keeping the byte-compare in `tests/contract.ts` honest.
-3. Bump the host ABI and keep `blackberry-classic-profile.ts` in step.
-4. Route the existing IME contract to a candidate window, so pinyin composition
-   can land where the runtime already expects it.
+Automated checks cover workspace isolation, stable terminal slots after closing/reopening, focus, maximize/restore, bounded non-overlapping geometry, dynamic file paging, Pinyin, chat context/errors, and text routing. Portable C tests open eight real PTYs and check TIOCGWINSZ after resize. On-device diagnostics ran two shells with /tmp and / as separate working directories and received `6 42` from stty in the tiled layout (`tiling_verified=2`). Maximizing reported `19 42` (`resize_verified=19`). Actual framebuffer captures show both shells, a split BerryCore README preview, and 你好 plus the 中文 Pinyin candidate.
 
-## Boundaries this keeps
+Remaining herdr parity work: upstream daemon/CLI/socket interfaces, remote SSH hosts, agent detection, saved layouts and arbitrary nested pane trees. The current release adds native two-pane behavior, but does not claim full 1:1 herdr parity. Layout and application session state are in-memory; the wallpaper selection retains its existing disk persistence.
 
-- The phone stays BB10/QNX. No Hyprland, no Wayland, no Arch kernel.
-- BerryCore keeps providing shell, files, SSH and agent backends.
-- Replacing the browser does not replace the BB10 home screen or a system
-  window manager.
-- The web desktop is kept until the native path covers it; it is not deleted
-  to make the migration look further along than it is.
+Final 0.7.0 BAR SHA-256: `c7d2cf2147f723ea40dbf4e5e24395e35004182b1dece6652455ea4db6421704`; build `1c734926e18281d6e172c396a8ee0eb1`. PPS installer returned `result::success`; the final app reached `stage=running`. Installed JS and PAK SHA-256 values match the production receipt. The BAR contains no private API key or diagnostic guest. The temporary direct-PPS instance was closed after capture to avoid overlapping with a subsequent icon launch. The saved Starship Ascent choice was restored on the final home screen. Physical 0.7.0 acceptance passed: the user confirmed focused terminal input, the two-pane flow and the Menu launcher all work. The next request supersedes this release's visual design and fixed two-pane layout.
 
-## Not started
+## Native 0.8.0: dwindle desktop and local agent tools
 
-Phases 2–6 of the migration plan: native desktop and launcher, native IPC,
-native terminal with CJK, the agent runtime, and the OmaBerry BAR build path.
-None of that is claimed here.
+The user's correction replaces 0.7's invented window chrome and fixed stacked pair. The desktop uses the original Omarchy icon glyph (U+E900), Liftoff Sunset, a compact top bar and a centered menu that starts closed. Removed the large wordmark, wallpaper label, bottom version strip, + Tile/Apps controls and pane +/maximize/x buttons. A binary split tree supports ten workspaces and sixteen global stable windows, focused leaf splitting, collapse on close, spatial focus/swap, moving between workspaces, fullscreen, split orientation and ratio resizing. Each PTY receives its actual window dimensions. Files and chat reflow with width and height.
+
+Q20 Menu is now a held Super modifier and a tap-to-menu key. The native host queues normalized chords separately from typed characters, including Menu + trackpad navigation; it resets modifiers on deactivation. See NATIVE-SHORTCUTS.md for the implemented bindings and QNX-specific limits. Physical chord acceptance for this new host remains to be checked by the user.
+
+herdr is now a sidebar over the actual workspace/PTY layout, with real per-chat task status, following upstream screenshot/render structure at `143bf5fd4781d164260c63fe28e7dc08054ad32f`. DeepSeek has sequential function-call execution for local shell, file read/write and desktop operations; a task remains attached to its originating chat even when its tools focus another window. Cancellation stops both HTTPS and command children. Output, context and round counts are bounded. Active agent tasks request background ticks without rendering; idle background windows sleep. This is still an adaptation, not a completed upstream herdr daemon port.
+
+The browser package `com.omacom.OmaBerry.testM14r5OhSB8AynIxgiBld7dw` was backed up locally and uninstalled with the system installer's `action::uninstall` / `package_id` transaction; the result was `success`. The old failed `removeApp` transaction was inspected, not treated as success. The browser backend PID was verified using its `omaberry.log` file descriptors before termination. Native package identity and private data are retained, with displayed name OmaBerry and the old browser's icon bytes.
+
+Verification includes bounded layout invariants, including sixteen repeated focused splits, real native PTY resizing, independent input, Pinyin regressions, agent call sequencing/ownership/cancellation/redaction and actual asynchronous process execution/timeout/output limits. On-device screenshots show the first wallpaper, four separate quarter panes, five recursively divided panes and centered menu. A real DeepSeek task ran pwd in /tmp (QNX resolves it to /dev/shmem), wrote/read a test file and opened Files. It reported a native fsync ENOSYS on shared memory and recovered through shell; the file writer was subsequently fixed to handle absent fsync and rename on QNX shared memory, reporting atomic=false for its direct-write fallback. Ordinary filesystem writes retain atomic rename. Final native-writer retest and package hashes are recorded below after deployment.
+
+Final 0.8.0 file checks passed on-device: private/flash files returned `ok=true, atomic=true`; /tmp returned `ok=true, atomic=false` and exact content. A fresh DeepSeek task used only write_file and read_file successfully, returning a Chinese confirmation without shell fallback. Production BAR SHA-256: `6be97284b0f685261ab2ef35058073f2fad1baccd7bbe3a23402e2390e6f95f5`; build `250ea17aca57893a758240674bbaaa20`. The original browser icon bytes, private-key exclusion and diagnostic-code exclusion are verified in the BAR.
+
+Final PPS install returned `result::success`; installed JS and PAK match the final receipt. Production app reached `stage=running` with build `250ea17aca57893a758240674bbaaa20`. Diagnostic code/data and test files were removed, Liftoff Sunset restored, and the direct test instance closed before icon-launch acceptance. The native desktop screenshots are docs/native-080-home.png and docs/native-080-four.png.
+
+## Native 0.8.1: OmaBerry branding and native-only documentation
+
+The project owner's supplied transparent green OmaBerry mark replaces the Omarchy glyph in the top-left menu trigger and centered menu, and replaces the old browser icon in the BB10 launcher. The original artwork is preserved in docs/logo.png; resized variants and their uses are documented in BRANDING.md. The menu heading now reads OmaBerry. Liftoff Sunset and the existing recursive layout are retained.
+
+The project README and native development guide now describe the PocketJS/QuickJS/native-host architecture, build and deployment path, direct BerryCore operations, private DeepSeek configuration, current agent tools and remaining herdr limitations. Browser sources are explicitly historical and are not required by the native runtime. Repository description and topics now identify PocketJS native development.
+
+Production BAR SHA-256: `6d501b216a6492191ee902b15a984fee17b575f25e8a6e55c616288b59b855c4`; build `3d3e243a48840c71acda8aed45410fcd`. Resource checks compare all sixteen wallpaper tile payloads and the new 256px logo with their source pixels, verify linear sampling and Chinese glyph coverage, and confirm the old glyph/wordmark are absent from the pack. The BAR contains the supplied launcher icon and no private credential or diagnostic guest.
+
+PPS installation returned success. Installed production JS/PAK hashes match the receipt; installed launcher icon bytes match native/host/icon.png. The app reached stage=running at 720×720. docs/native-home.png is a production framebuffer. docs/native-four.png and docs/native-menu.png are real framebuffer captures after a temporary scripted guest opened four PTYs and the menu; commands returned /tmp, QNX and a 12×20 terminal size. The production guest was restored and its hashes rechecked afterward. Diagnostic files and the direct-launch test instance were removed/closed. This verifies the branding and native presentation; it does not substitute for physical acceptance of the held Menu shortcuts.

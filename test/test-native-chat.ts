@@ -1,0 +1,18 @@
+import { strict as assert } from "node:assert";
+import vm from "node:vm";
+const source=await Bun.file(new URL("../native/src/chat.ts",import.meta.url)).text();
+const code=new Bun.Transpiler({loader:"ts"}).transformSync(source.replace(/^import .*;\n/gm,"").replace(/export /g,""));
+let owner=0,draft="hello",frame:any,request:any,cancels=0;
+let response={state:"running",httpStatus:0,error:"",body:""};
+const api={info:()=>({configured:true,model:"deepseek-flash"}),start:(body:string)=>{request=JSON.parse(body);return true;},poll:()=>response,cancel:()=>cancels++};
+const c:any={globalThis:{omaAI:api},Array,Math,JSON,createSignal(value:any){return [()=>value,(next:any)=>value=next];},onFrame(fn:any){frame=fn;},reportAppAction(){}};
+vm.createContext(c);vm.runInContext(code+"\nglobalThis.make=createChat;globalThis.lines=chatLines",c);
+const chat=c.globalThis.make(()=>owner,()=>draft,()=>{draft="";});chat.start();chat.send();assert.equal(chat.pending(),0);assert.equal(draft,"");assert.equal(request.model,"deepseek-flash");assert.equal(request.messages.at(-1).content,"hello");assert.equal(chat.histories()[0].length,1);
+owner=1;draft="other";chat.send();assert.match(chat.error(),/pending/);assert.equal(chat.histories()[1].length,0);
+response={state:"done",httpStatus:200,error:"",body:JSON.stringify({choices:[{message:{content:"你好，黑莓！"},finish_reason:"stop"}]})};frame();assert.equal(chat.pending(),-1);assert.equal(chat.histories()[0][1].content,"你好，黑莓！");assert.equal(chat.histories()[1].length,0);
+owner=0;draft="again";chat.send();assert.equal(request.messages.length,4);response={state:"done",httpStatus:402,error:"",body:'{"error":{"message":"Insufficient balance"}}'};frame();assert.match(chat.error(),/402/);assert.equal(chat.histories()[0].length,3);
+chat.reset();assert.equal(chat.histories()[0].length,0);draft="cancel";chat.send();chat.cancel();assert.equal(cancels,1);assert.match(chat.error(),/cancelled/);
+assert.equal(c.globalThis.lines("你".repeat(22)).length,2);assert.equal(c.globalThis.lines("x".repeat(43)).length,2);
+console.log("✓ Native chat: context, workspace isolation, background replies, busy/error/cancel handling and CJK wrapping");
+draft="error";chat.send();response={state:"done",httpStatus:401,error:"",body:'{"error":{"message":"invalid sk-TEST_REDACTION_TOKEN"}}'};frame();assert.match(chat.error(),/redacted/);assert(!chat.error().includes("sk-TEST"));
+console.log("✓ Provider errors redact credential-shaped text");
