@@ -10,7 +10,7 @@ On the phone, three shell shortcuts on Desktop 2 produced a half-width pane and 
 
 ## Chinese input and trackpad
 
-The old candidate buttons selected the Latin-only monospace font slot. Candidate text now uses font slot 0 with bundled Noto Sans SC glyphs. A real framebuffer shows `1 你  2 尼  3 呢`; scripted `nihao` plus Space commits `你好`. The C motion test covers accumulation, dominant axis, direction reversal and throttling. Physical selection and movement feel still need separate user acceptance for this build.
+The old candidate buttons selected the Latin-only monospace font slot. Candidate text now uses font slot 0 with bundled Noto Sans SC glyphs. A real framebuffer shows `1 你  2 尼  3 呢`; scripted `nihao` plus Space commits `你好`. The C motion test covers accumulation, dominant axis, direction reversal and throttling. The user subsequently confirmed physical candidate selection and commit in the acceptance sequence below.
 
 ## Embedded browser
 
@@ -49,3 +49,13 @@ The screenshots in the README are actual 720×720 device framebuffer captures. U
 The final executable, guest JS and resource pack were read back from the phone and match the hashes above. The app reached `stage=running` with this build ID. This development phone still has no accepted debug token: deployment updates the existing package's native payload using its configured development bridge. It is **not** a successful BAR installer transaction; system package registration retains its older version metadata. The pre-0.10 payload is backed up outside the app and private app data is retained. Diagnostic guest code and command/state files are removed from the production installation.
 
 Production restart checks restored herdr project/session selection on Desktop 1 and the Browser URL on Desktop 2. The restored web page rendered at 680×518 with its counter reset to 0, as expected after process exit. The test process was then closed for physical icon-launch acceptance. A local HTML fixture remains in the private app data for that keyboard check; it is not part of the shipped BAR.
+
+## October 21: physical acceptance
+
+After the 0.10.0 payload update, the user answered “三项都正常” to the icon-launch acceptance sequence:
+
+- In herdr, enable CN, type `ni`, move left/right with the physical trackpad and press it to commit a candidate.
+- Hold Menu and press T twice to open desktop-level tiled shell windows.
+- Press Menu + 2, tap the webpage's “Type here” field and type `abc` on the physical keyboard.
+
+This confirms candidate rendering/selection/commit, physical Menu + T desktop tiling, workspace switching and hardware-keyboard input in the embedded page. The user also answered “能显示 abc” to the earlier standalone browser-input question; that earlier prompt did not independently identify its tested build. Neither answer establishes compatibility with arbitrary websites or every shortcut. This acceptance update changes documentation only; the production hashes above are unchanged.

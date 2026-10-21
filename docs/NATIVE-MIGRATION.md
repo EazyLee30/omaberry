@@ -171,3 +171,7 @@ After the 0.9.0 native payload update, the user answered “计数保留、新 s
 herdr is now a regular application window with independent project/agent state. The system desktops own recursive tiling; new shells create desktop windows. Chinese candidate buttons use the CJK font slot. Trackpad input accumulates small movements and separates desktop focus, scrolling, Pinyin selection and webpage pointer use. A native system-WebKit compositor embeds actual web pages inside desktop tiles, with bounded browser tools available to the agent.
 
 See [0.10.0 verification](NATIVE-0100.md) for real-device browser/form tests, four-shell recursive geometry, agent source/apply/present/rollback evidence and deployment details.
+
+### October 21: physical 0.10.0 acceptance
+
+The user confirmed “三项都正常” after icon launch: herdr's CN candidates display correctly and can be selected/committed with the trackpad; two Menu + T launches create desktop-level tiled shells; Menu + 2 opens the browser workspace, where the physical keyboard enters `abc` into the webpage. The earlier standalone webpage-input prompt also received “能显示 abc”. These confirmations supplement the scripted checks; they do not imply arbitrary website or full shortcut compatibility. No new build or device mutation was needed to record acceptance.

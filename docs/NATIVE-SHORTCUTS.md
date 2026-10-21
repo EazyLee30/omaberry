@@ -8,6 +8,8 @@ Physical acceptance on October 21: the user confirmed two Menu + Enter launches 
 
 Following the 0.9.0 native payload update on October 21, the user also confirmed that holding Menu and pressing T opens a new shell tab. The native preview counter changed from 1 to 2 on touch and retained 2 after switching to the agent tab and back.
 
+For 0.10.0, the user confirmed physical trackpad selection/commit of herdr's Chinese candidates, two Menu + T launches as desktop-level tiled shells, and Menu + 2 followed by hardware-keyboard input into an embedded webpage. This supersedes the earlier shell-tab behavior with the desktop-window behavior listed below.
+
 | Shortcut | Native action |
 | --- | --- |
 | Super + Enter | New BerryCore terminal |
