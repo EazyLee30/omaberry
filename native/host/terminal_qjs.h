@@ -15,6 +15,7 @@ void pocket_runtime_terminal_unfocus(void) { int i;for(i=0;i<OMA_TERMINALS;i++)o
 static JSValue oma_js_open(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv) {
   (void)self; (void)argc; (void)argv;
   oma_select(ctx,argc,argv,0);oma_utf_tail_len = 0;
+  if(argc>1){const char *cwd=JS_ToCString(ctx,argv[1]);int ok;if(!cwd)return JS_EXCEPTION;ok=oma_open_at(cwd);JS_FreeCString(ctx,cwd);return JS_NewBool(ctx,ok);}
   return JS_NewBool(ctx, oma_open());
 }
 static JSValue oma_js_close(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv) {

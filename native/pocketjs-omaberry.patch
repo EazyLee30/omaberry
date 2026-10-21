@@ -1,8 +1,8 @@
 diff --git a/engine/quickjs-c/pocket_runtime.c b/engine/quickjs-c/pocket_runtime.c
-index d4cd455..af29824 100644
+index d4cd455..91a2069 100644
 --- a/engine/quickjs-c/pocket_runtime.c
 +++ b/engine/quickjs-c/pocket_runtime.c
-@@ -3,6 +3,14 @@
+@@ -3,6 +3,15 @@
  #include "pocket_ui_cabi.h"
  #include "pocket_spec.h"
  #include "quickjs.h"
@@ -13,21 +13,22 @@ index d4cd455..af29824 100644
 +#include "../../hosts/blackberry-classic-qnx/exec_qjs.h"
 +#include "../../hosts/blackberry-classic-qnx/ime_qjs.h"
 +#include "../../hosts/blackberry-classic-qnx/theme_qjs.h"
++#include "../../hosts/blackberry-classic-qnx/ui_qjs.h"
 +#endif
  #ifdef POCKET_RUNTIME_EXTENSION
  #include "pocketjs_symbian_extension.h"
  /* Reuse the existing native core ABI, including its compatibility name. */
-@@ -557,6 +565,9 @@ static int add_host_operation(
+@@ -557,6 +566,9 @@ static int add_host_operation(
  }
  
  static int install_host(int width, int height) {
 +#ifdef __QNXNTO__
-+  if (!oma_install_terminal(context, global) || !oma_install_files(context, global) || !oma_install_ai(context, global) || !oma_install_exec(context, global) || !oma_install_ime(context, global) || !oma_install_theme(context, global)) return 0;
++  if (!oma_install_terminal(context, global) || !oma_install_files(context, global) || !oma_install_ai(context, global) || !oma_install_exec(context, global) || !oma_install_ime(context, global) || !oma_install_theme(context, global) || !oma_install_ui(context, global)) return 0;
 +#endif
  #ifdef POCKET_OFFLOAD_POSIX
    if (!install_offload(context, global)) return 0;
  #endif
-@@ -658,6 +669,14 @@ static int drain_jobs(void) {
+@@ -658,6 +670,14 @@ static int drain_jobs(void) {
  }
  
  void pocket_runtime_shutdown(void) {
@@ -42,7 +43,7 @@ index d4cd455..af29824 100644
  #ifdef POCKET_RUNTIME_EXTENSION
    if (native_extension && native_extension->shutdown) native_extension->shutdown(native_gl_current);
    native_extension = NULL;
-@@ -811,6 +830,43 @@ int pocket_runtime_boot(
+@@ -811,6 +831,43 @@ int pocket_runtime_boot(
  }
  
  /* One guest turn (frame call + job drain), then `tick_count` core ticks. */
@@ -86,7 +87,7 @@ index d4cd455..af29824 100644
  static int run_frame(
    uint32_t buttons,
    const PocketRuntimeContact *contacts,
-@@ -876,14 +932,52 @@ static int run_frame(
+@@ -876,14 +933,52 @@ static int run_frame(
        take_exception(context); runtime_failed = 1; return 0;
      }
    }
@@ -342,7 +343,7 @@ index 811e786..4937104 100644
      <env var="LD_LIBRARY_PATH" value="app/native/lib"/>
  </qnx>
 diff --git a/hosts/blackberry-classic-qnx/main.c b/hosts/blackberry-classic-qnx/main.c
-index 83ba130..7b4635a 100644
+index 83ba130..a6946f6 100644
 --- a/hosts/blackberry-classic-qnx/main.c
 +++ b/hosts/blackberry-classic-qnx/main.c
 @@ -14,6 +14,7 @@
@@ -353,10 +354,11 @@ index 83ba130..7b4635a 100644
  #include <stdbool.h>
  #include <stdio.h>
  #include <stdlib.h>
-@@ -56,6 +57,12 @@ static int runtime_ready;
+@@ -56,6 +57,13 @@ static int runtime_ready;
  static PocketInputState input;
  
  static unsigned long frame_count;
++extern void pocket_runtime_ui_presented(void);
 +static volatile sig_atomic_t capture_requested;
 +static void request_capture(int signal_number)
 +{
@@ -366,7 +368,7 @@ index 83ba130..7b4635a 100644
  static unsigned long touch_event_count;
  static unsigned long keyboard_event_count;
  static unsigned long trackpad_event_count;
-@@ -68,6 +75,8 @@ static int last_trackpad_buttons;
+@@ -68,6 +76,8 @@ static int last_trackpad_buttons;
  static int last_key_sym;
  static int last_key_scan;
  static int last_key_flags;
@@ -375,7 +377,7 @@ index 83ba130..7b4635a 100644
  static unsigned long last_action_sequence;
  static char status_stage[32] = "starting";
  static char status_detail[256] = "host entry";
-@@ -110,6 +119,8 @@ static void write_status(void)
+@@ -110,6 +120,8 @@ static void write_status(void)
    fprintf(file, "frames=%lu\n", frame_count);
    fprintf(file, "touch_events=%lu\n", touch_event_count);
    fprintf(file, "keyboard_events=%lu\n", keyboard_event_count);
@@ -384,7 +386,7 @@ index 83ba130..7b4635a 100644
    fprintf(file, "trackpad_events=%lu\n", trackpad_event_count);
    fprintf(file, "trackpad_clicks=%lu\n", trackpad_click_count);
    fprintf(file, "trackpad_displacement=%d,%d\n", last_trackpad_dx, last_trackpad_dy);
-@@ -303,6 +314,18 @@ static uint32_t button_for_key(int symbol)
+@@ -303,6 +315,18 @@ static uint32_t button_for_key(int symbol)
    }
  }
  
@@ -403,7 +405,7 @@ index 83ba130..7b4635a 100644
  static void handle_keyboard(screen_event_t event)
  {
    int flags = 0;
-@@ -316,12 +339,109 @@ static void handle_keyboard(screen_event_t event)
+@@ -316,12 +340,109 @@ static void handle_keyboard(screen_event_t event)
    last_key_scan = scan;
    last_key_flags = flags;
    status_dirty = 1;
@@ -514,7 +516,7 @@ index 83ba130..7b4635a 100644
  }
  
  static void handle_touch(screen_event_t event, int type)
-@@ -356,6 +476,13 @@ static void handle_trackpad(screen_event_t event)
+@@ -356,6 +477,13 @@ static void handle_trackpad(screen_event_t event)
    last_trackpad_y = position[1];
    last_trackpad_buttons = buttons;
    status_dirty = 1;
@@ -528,7 +530,7 @@ index 83ba130..7b4635a 100644
    /* Integer joystick displacement: every non-zero event is one focus pulse. */
    pocket_input_relative(&input, (float)displacement[0], (float)displacement[1]);
    primary = buttons != 0;
-@@ -399,6 +526,7 @@ static void handle_navigator_event(bps_event_t *event)
+@@ -399,6 +527,7 @@ static void handle_navigator_event(bps_event_t *event)
        break;
      case NAVIGATOR_WINDOW_INACTIVE:
        app_active = 0;
@@ -536,7 +538,7 @@ index 83ba130..7b4635a 100644
        set_status("inactive", "window inactive");
        break;
      case NAVIGATOR_ORIENTATION_CHECK:
-@@ -427,6 +555,46 @@ static void handle_event(bps_event_t *event)
+@@ -427,6 +556,46 @@ static void handle_event(bps_event_t *event)
    else if (domain == navigator_get_domain()) handle_navigator_event(event);
  }
  
@@ -583,7 +585,7 @@ index 83ba130..7b4635a 100644
  static int render_frame(void)
  {
    PocketInputSample sample;
-@@ -441,12 +609,21 @@ static int render_frame(void)
+@@ -441,15 +610,25 @@ static int render_frame(void)
    frame.touch_hit = sample.touch_down
      ? pocket_runtime_hit_test_bounds((float)frame.touch_x, (float)frame.touch_y)
      : 0;
@@ -607,7 +609,11 @@ index 83ba130..7b4635a 100644
      set_error("OpenGL ES frame presentation failed");
      return 0;
    }
-@@ -467,6 +644,7 @@ int main(int argc, char **argv)
++  pocket_runtime_ui_presented();
+   frame_count += 1;
+   action_sequence = pocket_runtime_action_sequence();
+   if (action_sequence != last_action_sequence) {
+@@ -467,6 +646,7 @@ int main(int argc, char **argv)
    bps_event_t *event = NULL;
    int exit_code = EXIT_FAILURE;
    (void)argc;
@@ -615,7 +621,7 @@ index 83ba130..7b4635a 100644
  
    initialize_executable_directory(argv == NULL ? NULL : argv[0]);
    pocket_input_init(&input, 1.0f);
-@@ -475,6 +653,8 @@ int main(int argc, char **argv)
+@@ -475,6 +655,8 @@ int main(int argc, char **argv)
      set_error("bps_initialize failed");
      goto cleanup;
    }
@@ -624,7 +630,7 @@ index 83ba130..7b4635a 100644
    if (!initialize_graphics()) goto cleanup_bps;
    if (screen_request_events(screen_context) != BPS_SUCCESS ||
        navigator_request_events(0) != BPS_SUCCESS) {
-@@ -485,6 +665,8 @@ int main(int argc, char **argv)
+@@ -485,6 +667,8 @@ int main(int argc, char **argv)
      set_error("cannot read packaged app.js or app.pak");
      goto cleanup_graphics;
    }
@@ -633,7 +639,7 @@ index 83ba130..7b4635a 100644
    if (!pocket_runtime_boot(
          (const char *)java_script.bytes,
          java_script.length,
-@@ -501,11 +683,11 @@ int main(int argc, char **argv)
+@@ -501,11 +685,11 @@ int main(int argc, char **argv)
      set_error("PocketJS GLES2 backend initialization failed");
      goto cleanup_runtime;
    }
@@ -647,7 +653,7 @@ index 83ba130..7b4635a 100644
      if (bps_get_event(&event, timeout) != BPS_SUCCESS) {
        set_error("bps_get_event failed");
        break;
-@@ -523,6 +705,7 @@ int main(int argc, char **argv)
+@@ -523,6 +707,7 @@ int main(int argc, char **argv)
        } while (event != NULL && !app_shutdown && app_active);
        if (!app_shutdown && !render_frame()) app_shutdown = 1;
      } else {

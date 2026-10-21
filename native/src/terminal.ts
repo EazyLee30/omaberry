@@ -60,7 +60,8 @@ export function createTerminal(active:()=>boolean, slot=0) {
   const [sessionState,setSessionState]=createSignal("closed");
   const [focused,setFocused]=createSignal(false);
   let started=false, registered=false, bytes=-1;
-  function open() { if(!api) {setStatus("Native PTY unavailable");return;} if(api.open(slot)===false){setStatus("Shell could not start");return;} started=true; api.resize?.(screen.cols,screen.rows,slot); api.focus(true,slot); }
+  function open(cwd="") { if(!api) {setStatus("Native PTY unavailable");return;} if(api.open(slot,cwd)===false){setStatus("Shell could not start");return;} started=true; api.resize?.(screen.cols,screen.rows,slot); api.focus(true,slot); }
+  function ensure(cwd=""){if(!started){open(cwd);blur();}}
   function focus() { if(!started) open(); else api.focus(true,slot); }
   function send(text:string) { if(started) api.write(text,slot); }
   function restart() { if(api) api.close(slot); screen.lines=Array.from({length:screen.rows},()=>Array(screen.cols).fill(" "));screen.x=screen.y=0;screen.escape="";screen.osc=screen.oscEscape=false;open(); }
@@ -75,5 +76,5 @@ export function createTerminal(active:()=>boolean, slot=0) {
     if(active() && s.focused) for(const text of textConsume()) send(text.replace(/\x08/g,"\x7f").replace(/\n/g,"\r"));
   });}
   function close(){if(api)api.close(slot);started=false;setFocused(false);screen.lines=Array.from({length:screen.rows},()=>Array(screen.cols).fill(" "));screen.x=screen.y=0;screen.escape="";screen.osc=screen.oscEscape=false;setOutput(screen.render());setSessionState("closed");}
-  return {output,status,sessionState,focused,open,focus,send,restart,blur,start,resize,close};
+  return {output,status,sessionState,focused,open,ensure,focus,send,restart,blur,start,resize,close};
 }

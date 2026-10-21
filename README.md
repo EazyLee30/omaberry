@@ -4,7 +4,7 @@
   <p><strong>A native PocketJS tiling desktop for BlackBerry Classic / Q20.</strong></p>
   <p>BB10 / QNX · BerryCore shell · DeepSeek agents · Omarchy-inspired keyboard controls</p>
   <p>
-    <img alt="Version" src="https://img.shields.io/badge/native-0.8.1-a9dc62?style=flat-square">
+    <img alt="Version" src="https://img.shields.io/badge/native-0.9.0-a9dc62?style=flat-square">
     <img alt="Runtime" src="https://img.shields.io/badge/runtime-PocketJS-7aa2f7?style=flat-square">
     <img alt="Platform" src="https://img.shields.io/badge/platform-BB10%20%2F%20QNX-c0caf5?style=flat-square">
     <a href="LICENSE"><img alt="Code license" src="https://img.shields.io/badge/code-MIT-9ece6a?style=flat-square"></a>
@@ -32,11 +32,21 @@ Actual 720 × 720 Q20 framebuffer captures. The default wallpaper is **Liftoff S
 | Files | Browse directories, filter names and read paginated text previews directly from the device |
 | Chat | DeepSeek conversations, common simplified Chinese glyphs and an offline physical-keyboard Pinyin composer |
 | Local agent tools | Execute shell commands, read/write files, inspect and change the live desktop |
-| herdr adaptation | Sidebar showing the actual workspaces, shell windows and built-in agent task states |
+| herdr adaptation | Spaces, independent session tabs, tiled shell/agent panes and actual task states; no extra titlebar |
+| Live native UI | Agents edit `ui.js`, apply native View/Text/Button trees, verify presented revisions and undo changes |
 | Notes | A scratchpad for each Notes window |
 | Theme | Tokyo Night colors, thin focus borders, translucent panes and four Tokyo Liftoff wallpapers; wallpaper and style settings persist |
 
 Each new window splits the focused pane in half along its longer dimension. Closing a pane lets its neighbor fill the freed area. The desktop has no window-manager titlebars or close buttons; click the top-left logo for the [centered menu](docs/native-menu.png), or use the keyboard.
+
+## herdr and live UI
+
+<p align="center">
+  <img src="docs/native-herdr.png" alt="Native herdr-style spaces, tabs and independent chat/shell panes on Q20" width="360">
+  <img src="docs/native-ui.png" alt="A native PocketJS UI module edited by the on-device DeepSeek agent" width="360">
+</p>
+
+The agent edits actual `ui.js` source on the phone. PocketJS displays the resulting native controls, confirms frame presentation and keeps the last good version if a change fails. See [the live UI workflow](docs/NATIVE-LIVE-UI.md).
 
 ## Keyboard
 
@@ -56,6 +66,9 @@ On the Q20, **hold the physical BlackBerry Menu key to use it as Super**. Tap an
 | Super + Shift + number | Move the focused window to a workspace |
 | Super + Shift + F / N / A | Files / Notes / agent chat |
 | Super + Ctrl + Enter | Toggle the herdr sidebar |
+| Super + T / Shift + T | New shell / agent tab |
+| Super + [ / ] | Previous / next tab |
+| Super + U | Native UI preview |
 | Super + K | Show shortcut help |
 
 See the [full native shortcut map](docs/NATIVE-SHORTCUTS.md) for workspace cycling, resizing and theme controls. Ctrl chords require a suitable external keyboard; menu actions are also available.
@@ -80,7 +93,9 @@ Q20 keyboard / trackpad / touchscreen
 
 The UI is written in TypeScript and Solid JSX and compiled for PocketJS's native renderer. There is no DOM or HTML/CSS page at runtime. Terminal and file operations use native APIs; DeepSeek requests use BerryCore's `curl` with certificate verification.
 
-The built-in agent can use `run_shell`, `read_file`, `write_file` and `desktop`. Commands run with the app's permissions and return their actual output and exit status. The desktop tool can open/focus/close panes, change workspaces and splits, and adjust supported theme settings. Stop cancels an active request and its command process.
+The built-in agent can use `run_shell`, `read_file`, `write_file`, `desktop` and `native_ui`. Commands run with the app's permissions and return their actual output and exit status. The desktop tool can open/focus/close panes, change workspaces and splits, and adjust supported theme settings. Stop cancels an active request and its command process.
+
+In herdr, ask **“把原生预览标题改成你好，强调色改成绿色，保留计数按钮并应用”**. The agent reads the device workspace’s `ui.js`, edits the source, and opens its live PocketJS preview. `native_ui apply` waits for native frame presentation before reporting success. Invalid source retains the last accepted view; **Undo** restores the previous source. See the [live native UI guide](docs/NATIVE-LIVE-UI.md).
 
 API credentials are provisioned separately in private application data. They are not included in the source, UI assets or BAR. Chat and tool results needed for a task are sent to the configured DeepSeek service; the desktop, terminal and file browser work without an AI connection.
 
@@ -113,11 +128,11 @@ See [native development](native/README.md) for private DeepSeek configuration, s
 
 This is an independently implemented native adaptation of Omarchy and herdr, with further parity work ahead.
 
-- Window layouts, shell sessions, Notes and chat history last for the app process lifetime. Wallpaper and desktop style persist across launches.
+- Workspaces, tabs, layouts, live UI source/state, wallpaper and style persist across launches. Each chat saves up to 24 recent message excerpts (500 characters each). Shell processes and Notes remain tied to the app process; reopening a saved shell starts a new PTY.
 - The terminal handles a basic monochrome VT subset. Full terminal emulation, scrollback browsing and arbitrary full-screen terminal programs are not yet covered.
 - The built-in Pinyin composer is available in Chat. It does not switch the BB10 system input method.
 - One built-in agent task runs at a time. Upstream herdr's daemon, detached CLI/socket protocol, SSH host orchestration and external-agent detection are not implemented.
-- Agents can change the supported live desktop state. Hot rebuilding native JSX and resource packs from inside the app is still future work.
+- Live `ui.js` modules can change native component trees, button state and herdr theme colors. Recompiling the main TSX desktop, native C host or baked resource pack on the phone is not implemented. The agent receives the validated tree and presentation revision, not screenshot vision.
 - The app runs within BB10; it does not install Hyprland or replace the phone OS.
 
 The older `web/`, `server/`, `sim/` and browser packaging scripts are retained as historical source. They are outside the active native runtime and build path. Development now targets `native/` and `scripts/native.py`.

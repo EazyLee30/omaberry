@@ -4,7 +4,7 @@
   "id": "dev.pocket-nexus.blackberry-classic-demo",
   "name": "pocketjs-blackberry-classic-hero",
   "title": "OmaBerry",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "engine": {
     "capabilities": {
       "requires": [

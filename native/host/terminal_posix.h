@@ -116,7 +116,7 @@ static void oma_close(void) {
   }
   oma_pid = -1;
 }
-static int oma_open(void) {
+static int oma_open_at(const char *cwd) {
   struct winsize size;
   struct termios settings;
   pid_t pid;
@@ -139,7 +139,9 @@ static int oma_open(void) {
   if (pid < 0) { snprintf(oma_error, sizeof(oma_error), "PTY open: %s", strerror(errno)); return 0; }
   if (pid == 0) {
     /* Only async-signal-safe calls between fork and exec in the GLES process. */
-    if (chdir(OMA_HOME) < 0) chdir("/");
+    if (chdir(cwd && *cwd ? cwd : OMA_HOME) < 0) {
+      const char message[] = "\r\nUnable to enter shell directory\r\n"; write(2, message, sizeof(message)-1); _exit(126);
+    }
     execve(OMA_SHELL, args, env);
     { const char message[] = "\r\nUnable to execute shell\r\n"; write(2, message, sizeof(message) - 1); }
     _exit(127);
@@ -156,6 +158,7 @@ static int oma_open(void) {
   }
   return 1;
 }
+static int oma_open(void) { return oma_open_at(NULL); }
 static int oma_resize(int cols,int rows) {
   struct winsize size;
   if(oma_fd<0 || cols<8 || cols>80 || rows<2 || rows>40)return 0;

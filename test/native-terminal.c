@@ -27,5 +27,6 @@ int main(void) {
   oma_slot=0;command("printf 'RETAIN_%s\\n' \"$PWD\"\r");assert(until("RETAIN_/"));
   for(oma_slot=3;oma_slot<OMA_TERMINALS;oma_slot++){assert(oma_open());command("printf 'EXTRA_%s\\n' READY\r");assert(until("EXTRA_READY"));}
   for(oma_slot=0;oma_slot<OMA_TERMINALS;oma_slot++)oma_close();oma_slot=0;
+  assert(oma_open_at("/"));command("printf 'INITIAL_%s\\n' \"$PWD\"\r");assert(until("INITIAL_/"));oma_close();
   puts("PTY: real tty, persistent cwd, Ctrl-C, exit and restart passed");
 }
