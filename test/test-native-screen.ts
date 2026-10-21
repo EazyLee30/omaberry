@@ -1,0 +1,11 @@
+import {strict as assert} from 'node:assert';
+import vm from 'node:vm';
+let now=1000,active=true,seq=0,cleared=0,version=1,input:any[]=[],reply:any={state:'pending'};
+const c:any={Date:{now:()=>now},omaScreen:{active:()=>active,clear:()=>cleared++,request:()=>++seq,poll:()=>reply},input:(a:any)=>{input.push(a);return {queued:true}},context:()=>({version})};vm.createContext(c);
+const code=new Bun.Transpiler({loader:'ts'}).transformSync((await Bun.file(new URL('../native/src/screen.ts',import.meta.url)).text()).replace(/export /g,''));vm.runInContext(code+'\nglobalThis.s=createScreen(input,context)',c);const s=c.s;
+s.begin({action:'observe',wait_ms:0});assert.equal(s.poll().state,'pending');reply={state:'done',id:seq+1,dataUrl:'data:image/png;base64,AA=='};assert.equal(s.poll().state,'pending');reply={...reply,id:seq,frame:8,width:720,height:720,capturedAt:now};assert.equal(s.poll().frame,8);assert(!JSON.stringify(s.last()).includes('base64'));
+assert.throws(()=>s.begin({action:'click',observation:seq,x:720,y:0}));assert.throws(()=>s.begin({action:'click',observation:seq,x:40,y:50,wait_ms:-1}));assert.equal(input.length,0);
+s.begin({action:'click',observation:seq,x:40,y:50,wait_ms:0});assert.equal(input.length,1);assert.throws(()=>s.begin());s.poll();reply={...reply,id:seq,frame:12};assert.equal(s.poll().actionResult.queued,true);
+version++;assert.throws(()=>s.begin({action:'type',observation:seq,text:'a'}),/changed/);version--;now+=120001;assert.throws(()=>s.begin({action:'type',observation:seq,text:'a'}),/expired/);
+s.begin({action:'observe',wait_ms:0});s.poll();active=false;assert.equal(s.poll().state,'error');assert.throws(()=>s.begin(),/foreground/);active=true;s.begin({action:'observe',wait_ms:0});s.poll();now+=12001;assert.equal(s.poll().error,'Screen capture timed out');assert(cleared>2);
+console.log('✓ Real-screen sequencing, physical bounds, expiry, layout changes, foreground gating, timeouts, no persisted image bytes');

@@ -1,6 +1,6 @@
 # OmaBerry native development
 
-OmaBerry **0.10.0** is a native PocketJS desktop for BlackBerry Classic / Q20 on BB10/QNX. The active interface includes recursive tiling, BerryCore PTYs, Files, Notes, an independent herdr application with Chinese input and local agents, embedded webpages and live native UI editing. See the [project README](../README.md) for current features and limits; historical prototypes and device acceptance results are in [NATIVE-MIGRATION.md](../docs/NATIVE-MIGRATION.md).
+OmaBerry **0.11.0** is a native PocketJS desktop for BlackBerry Classic / Q20 on BB10/QNX. The active interface includes recursive tiling, BerryCore PTYs, Files, Notes, an independent herdr application with Chinese input and local agents, embedded webpages and live native UI editing. See the [project README](../README.md) for current features and limits; historical prototypes and device acceptance results are in [NATIVE-MIGRATION.md](../docs/NATIVE-MIGRATION.md).
 
 The desktop runs as native PocketJS controls without an HTML shell or Node server. Its Browser app uses a native WebKit texture bridge. TypeScript and Solid JSX compile to PocketJS's guest JavaScript and resource pack; the native QNX host renders the interface and supplies input, PTY, file, process and HTTPS bindings.
 
@@ -91,7 +91,7 @@ Provision `data/deepseek.json` separately inside the app's private directory, wi
 
 Do not put credentials in `native/src`, the resource pack, a BAR or Git. The native transport reads the private file, sends HTTPS requests through BerryCore curl with CA verification, and keeps the bearer header out of process arguments. The UI only receives configuration availability and model name.
 
-Chat supplies the model with its conversation and the results of tools it invokes. The agent tools are `run_shell`, `read_file`, `write_file`, `desktop`, `herdr`, `browser` and `native_ui`. Shell execution uses the app user's permissions and BerryCore environment, a bounded output buffer and a 1–60 second deadline. Stop cancels both transport and command children. File writes are limited to 64 KiB and use atomic replacement where supported; QNX shared-memory paths such as `/tmp` report `atomic=false` for their direct-write fallback.
+Chat supplies the model with its conversation and the results of tools it invokes. The agent tools are `run_shell`, `read_file`, `write_file`, `desktop`, `herdr`, `browser`, `screen` and `native_ui`. Shell execution uses the app user's permissions and BerryCore environment, a bounded output buffer and a 1–60 second deadline. Stop cancels both transport and command children. File writes are limited to 64 KiB and use atomic replacement where supported; QNX shared-memory paths such as `/tmp` report `atomic=false` for their direct-write fallback.
 
 ## Input and rendering
 
@@ -119,6 +119,8 @@ bun test/test-native-tiling.ts
 bun test/test-native-herdr.ts
 bun test/test-native-browser.ts
 bun test/test-native-agent.ts
+bun test/test-native-screen.ts
+bun test/test-native-control.ts
 bun test/test-native-live-ui.ts
 bun test/test-native-terminal.ts
 bun test/test-native-files.ts
@@ -156,3 +158,14 @@ Browser tools expose actual page metadata and bounded navigation, click, text an
 The standalone WebPage keeps a device-wide CSS root even after compositor resizing. The host constrains the document root to the tile width in an isolated JavaScript world and sends a resize event. This does not make fixed-layout pages responsive. The same isolated world commits text with the browser editor's `execCommand`; regular character, Backspace and Enter events from the Q20 use that path because this compositor has no Cascades TextInput control to commit IMF text. Other keyboard events are forwarded through `WebPageEventHandler`. Cross-origin iframe editors and arbitrary custom keyboard handlers are not covered. No page script is given native command access.
 
 Trackpad motion accumulates small movements, favors the dominant axis, clears reversed motion and limits focus steps to one per 70 ms. Menu + trackpad changes desktop focus, Alt + trackpad scrolls, a composing herdr draft receives candidate arrows/commit, and a Browser tile receives pointer movement. `test/native-trackpad.c` exercises these motion rules.
+
+
+## Visual agent and on-device control
+
+`screen_native_impl.h` reads the final OpenGL framebuffer after native WebKit compositing. It flips the GL origin and encodes a 720×720 PNG using the system Qt libraries. A capture becomes available only after successful `eglSwapBuffers`. Failed, background or oversized captures return errors. The two most recent PNGs remain in private app data; old screenshot files are pruned on the first capture after restart.
+
+`screen.ts` binds physical coordinate actions to the last observation, checks foreground, bounds, layout fingerprint and a 120-second deadline, then obtains another frame. This is not a guarantee that an animated webpage cannot change between capture and click. A 350 ms settling delay is the default; explicit observations may wait up to two seconds. Browser input acceptance and loading state remain separate evidence.
+
+The built-in agent sends images as DeepSeek user content, after all tool replies for a batch. At most two image messages are kept in the request, capped at 6 MiB total transport size; screenshots are excluded from saved chat excerpts. UI apply waits for its displayed revision before automatically capturing pixels. The screenshot contains the foreground OmaBerry application, not BB10's other applications.
+
+The phone writes `omaberry-control.py` into its private UI workspace. Local processes can invoke it through BerryCore Python to access `screen`, `desktop`, `browser`, `native_ui` and `herdr`. Requests and responses live in `data/control`, use a bounded TTL and per-client lock, and do not open a network port. Built-in agent work and external control jobs are serialized. See [0.11 verification and usage](../docs/NATIVE-0110.md). This interface is infrastructure for real local harness integrations; it does not turn the built-in agent into DSH/OpenCode/Pi.

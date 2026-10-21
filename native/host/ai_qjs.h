@@ -25,7 +25,7 @@ static JSValue ai_js_start(JSContext *ctx,JSValueConst self,int argc,JSValueCons
   key=JS_IsObject(config)?JS_GetPropertyStr(ctx,config,"apiKey"):JS_UNDEFINED;
   token=JS_IsString(key)?JS_ToCString(ctx,key):NULL;body=JS_ToCStringLen(ctx,&length,argv[0]);
   if(!body){JS_FreeCString(ctx,token);JS_FreeValue(ctx,key);JS_FreeValue(ctx,config);return JS_EXCEPTION;}
-  if(length>32768){snprintf(ai_error,sizeof(ai_error),"Conversation exceeds 32 KiB");ai_state=2;ok=0;}
+  if(length>6*1024*1024){snprintf(ai_error,sizeof(ai_error),"Conversation exceeds 6 MiB");ai_state=2;ok=0;}
   else ok=ai_start(token,body);
   JS_FreeCString(ctx,body);JS_FreeCString(ctx,token);JS_FreeValue(ctx,key);JS_FreeValue(ctx,config);return JS_NewBool(ctx,ok);
 }

@@ -13,6 +13,9 @@ import {Desktop} from "./desktop.tsx";
 import {createChineseText} from "./chinese-text.ts";
 import {chatLines} from "./chat.ts";
 import {createAgent} from "./agent.ts";
+import {createScreen} from "./screen.ts";
+import {createControlBridge} from "./control-bridge.ts";
+import {CONTROL_CLIENT} from "./control-client.ts";
 import {createFiles,fileLabel} from "./files.ts";
 import {createTerminal} from "./terminal.ts";
 import {createTypedText} from "./typed-text.ts";
@@ -34,13 +37,15 @@ export default function OmaBerryDesktop(){
  const herdr=createHerdr(()=>live.root());
  const herdrWindow=()=>wm.apps().indexOf(6),agentOwner=herdr.selected;
  const drafts=slots.map(id=>createChineseText(()=>herdrWindow()>=0&&active(herdrWindow())&&agentOwner()===id));
- const chatWidth=()=>Math.max(40,wm.rect(herdrWindow()).width-10-(wm.rect(herdrWindow()).width-10>=270?78:0));
+ const chatWidth=()=>Math.max(40,wm.rect(herdrWindow()).width-10-(wm.rect(herdrWindow()).width-10>=270?90:0));
  const chatCols=()=>Math.max(5,Math.floor((chatWidth()-8)/8));
  const chatRows=(id:number)=>Math.max(1,Math.floor((wm.rect(herdrWindow()).height-10-(drafts[id]?.mode()?120:86))/12));
  const browser=createBrowser(()=>focusId()>=0&&active(focusId())&&wm.apps()[focusId()]===8,focusId);
  const live=createLiveUI(()=>slots.some(id=>wm.apps()[id]===7&&wm.visible(id))&&!menu(),preview,app=>open(({terminal:3,files:4,chat:6,notes:1,herdr:6,browser:8} as any)[app]));
  const theme=()=>live.document().theme;
- const agent=createAgent(agentOwner,()=>drafts[agentOwner()]?.typed()||"",()=>drafts[agentOwner()]?.clear(),chatRows,chatCols,desktopTool,live.tool,herdrTool,()=>herdr.path(),browserTool);
+ const screen=createScreen(screenInput,()=>({desktop:desktopTool({action:"state"}),menu:menu(),notice:notice(),uiRevision:live.revision(),browser:browserTool({action:"state"})}));
+ const agent=createAgent(agentOwner,()=>drafts[agentOwner()]?.typed()||"",()=>drafts[agentOwner()]?.clear(),chatRows,chatCols,desktopTool,live.tool,herdrTool,()=>herdr.path(),browserTool,screen,()=>control.busy());
+ const control=createControlBridge(()=>live.root()+"/../control",()=>agent.pending()>=0,screen,{desktop:desktopTool,browser:browserTool,native_ui:live.tool,herdr:herdrTool});
  const time=()=>{const d=new Date();return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");};
  const [clock,setClock]=createSignal(time());let tick=0,lastSession="",lastHerdr="",sessionAt=0;
  function release(){g.omaInput?.compose(false);terminals.forEach(t=>t.blur());resetTextInput();}
@@ -56,14 +61,35 @@ export default function OmaBerryDesktop(){
  function shell(){const cwd=herdr.path();let id=-1;mutate(()=>{setMenu("");id=wm.open(3);if(id>=0)terminals[id].ensure(cwd);});return id;}
  function preview(){open(7);}
  function close(id=focusId()){if(id<0)return;mutate(()=>{if(wm.apps()[id]===6&&agent.pending()>=0)agent.cancel();if(wm.apps()[id]===8)browser.close(id);terminals[id].close();notes[id].clear();searches[id].clear();wm.close(id);});reportAppAction("tile_close",id);}
- function herdrTool(a:any){if(a.action==="session")session(a.session);else if(a.action==="project")project(a.project);else if(a.action==="new"){if(newAgent()<0)throw new Error("Session limit");}else if(a.action==="shell")shell();else if(a.action!=="state")throw new Error("Unknown herdr action");return {...herdr.snapshot(),cwd:herdr.path()};}
+ function herdrTool(a:any){if(a.action==="session")session(a.session);else if(a.action==="project")project(a.project);else if(a.action==="new"){if(newAgent()<0)throw new Error("Session limit");}else if(a.action==="directory"){const r=g.omaFiles.list(a.path);if(r.error)throw new Error(r.error);if(!herdr.directory(a.path))throw new Error("Invalid directory");}else if(a.action==="shell")shell();else if(a.action!=="state")throw new Error("Unknown herdr action");return {...herdr.snapshot(),cwd:herdr.path()};}
  function showMenu(page="root"){mutate(()=>{setMenu(page);setQuery("");setChoice(0);setHelp(0);setNotice("");});}
  function hideMenu(){mutate(()=>setMenu(""));}
  function toggleMenu(){menu()?hideMenu():showMenu();}
  function style(setting:string,value:any){if(setting==="wallpaper"){if(!Number.isInteger(value)||value<0||value>3)throw new Error("wallpaper must be 0..3");if(!g.omaTheme?.set(value))throw new Error("Wallpaper was not saved");setWallpaper(value);}else if(setting==="gaps"&&typeof value==="boolean"){if(wm.gaps()!==value)wm.toggleGaps();}else if(setting==="bar"&&typeof value==="boolean"){if(wm.bar()!==value)wm.toggleBar();}else if(setting==="opacity"&&typeof value==="boolean")setTransparent(value);else throw new Error("Unknown style setting or invalid value");g.omaExec?.write("data/desktop-style.json",JSON.stringify({gaps:wm.gaps(),bar:wm.bar(),opacity:transparent()}));sync();}
- function browserTool(a:any){let id=a.window;if(a.action==="open"){id=open(8);if(id<0)throw new Error("Window limit");if(a.url)browser.load(id,a.url);}else if(a.action!=="state"){if(!Number.isInteger(id)||wm.apps()[id]!==8)throw new Error("Browser window required");if(a.action==="navigate"){if(typeof a.url!=="string")throw new Error("URL required");browser.load(id,a.url);}else if(a.action==="click"){if(!Number.isInteger(a.x)||!Number.isInteger(a.y))throw new Error("Pixel coordinates required");focus(id);if(!g.omaBrowser.click(id,a.x,a.y))throw new Error("Page is hidden, not ready, or coordinates are outside its viewport");}else if(a.action==="type"){if(typeof a.text!=="string"||a.text.length>1024)throw new Error("Text limit 1024");focus(id);if(!g.omaBrowser.text(id,a.text))throw new Error("Page is not ready");}else if(a.action==="scroll"){if(!Number.isInteger(a.value)||Math.abs(a.value)>2000)throw new Error("Scroll range -2000..2000");browser.scroll(id,a.value);}else if(["back","forward","reload","stop"].includes(a.action))browser.action(id,a.action);else throw new Error("Unknown browser action");}return {window:id,windows:slots.filter(i=>wm.apps()[i]===8).map(i=>({id:i,...g.omaBrowser?.state(i)}))};}
+ function browserTool(a:any){let id=a.window;if(a.action==="open"){id=open(8);if(id<0)throw new Error("Window limit");if(a.url)browser.load(id,a.url);}else if(a.action!=="state"){if(!Number.isInteger(id)||wm.apps()[id]!==8)throw new Error("Browser window required");if(a.action==="navigate"){if(typeof a.url!=="string")throw new Error("URL required");browser.load(id,a.url);}else if(a.action==="click"){if(!Number.isInteger(a.x)||!Number.isInteger(a.y))throw new Error("Pixel coordinates required");focus(id);if(!g.omaBrowser.click(id,a.x,a.y))throw new Error("Page is hidden, not ready, or coordinates are outside its viewport");}else if(a.action==="type"){if(typeof a.text!=="string"||a.text.length>1024)throw new Error("Text limit 1024");focus(id);if(!g.omaBrowser.text(id,a.text))throw new Error("Page is not ready");}else if(a.action==="scroll"){if(!Number.isInteger(a.value)||Math.abs(a.value)>2000)throw new Error("Scroll range -2000..2000");browser.scroll(id,a.value);}else if(["back","forward","reload","stop"].includes(a.action))browser.action(id,a.action);else throw new Error("Unknown browser action");}return {window:id,windows:slots.filter(i=>wm.apps()[i]===8).map(i=>({id:i,visible:wm.visible(i)&&!menu()&&!notice(),viewport:{x:(wm.rect(i).x+5)*2,y:(wm.rect(i).y+47)*2},...g.omaBrowser?.state(i)}))};}
+ function screenInput(a:any){
+  const id=focusId();
+  if(a.action==="click"){
+   const target=wm.ids().find(i=>{const r=wm.rect(i);return wm.visible(i)&&a.x>=r.x*2&&a.x<(r.x+r.width)*2&&a.y>=r.y*2&&a.y<(r.y+r.height)*2;});
+   if(!menu()&&!notice()&&target!==undefined&&wm.apps()[target]===8){const r=wm.rect(target),x=a.x-(r.x+5)*2,y=a.y-(r.y+47)*2,b=g.omaBrowser.state(target);if(x>=0&&y>=0&&x<b.width&&y<b.height){focus(target);browser.content(target);if(!g.omaBrowser.click(target,x,y))throw new Error("Browser click rejected");return {queued:true,target:"browser",window:target};}}
+   if(!g.omaScreen.click(a.x,a.y))throw new Error("Native click rejected");return {queued:true,target:"PocketJS"};
+  }
+  if(a.action==="key"){
+   if(typeof a.key!=="string"||a.key.length>20||!Number.isInteger(a.mods??0)||(a.mods??0)<0||(a.mods??0)>15)throw new Error("Invalid key/modifiers");
+   if(a.key==="menu"||(a.mods??0)&8||(a.key==="tab"&&((a.mods??0)&4))){if((a.key==="w"||a.key==="q")&&wm.apps()[id]===6&&agent.pending()>=0)throw new Error("Cannot close running agent");shortcut(a.key,a.mods??0);return {queued:true};}
+   const keys:any={enter:"\r",backspace:"\b",escape:"\x1b",tab:"\t",up:"\x1b[A",down:"\x1b[B",left:"\x1b[D",right:"\x1b[C"};if(!keys[a.key])throw new Error("Unknown key");a={action:"type",text:keys[a.key]};
+  }
+  if(a.action==="type"){
+   if(typeof a.text!=="string"||!a.text.length||a.text.length>256)throw new Error("Text must contain 1..256 characters");
+   if(id>=0&&wm.apps()[id]===8&&!menu()&&browser.editing()!==id){browser.content(id);if(!g.omaBrowser.text(id,a.text))throw new Error("Browser input rejected");return {queued:true,target:"browser",window:id};}
+   if(id>=0&&wm.apps()[id]===3&&!menu()){terminals[id].send(a.text);return {queued:true,target:"terminal"};}
+   if(!g.omaScreen.text(a.text))throw new Error("Native input rejected");return {queued:true,target:"PocketJS"};
+  }
+  if(a.action==="scroll"){if(!Number.isInteger(a.value)||Math.abs(a.value)>2000)throw new Error("Scroll range -2000..2000");if(wm.apps()[id]===8)browser.scroll(id,a.value);else shortcut(a.value<0?"scroll-up":"scroll-down",4);return {queued:true};}
+  throw new Error("Unknown screen action");
+ }
  function desktopTool(a:any){const map:any={terminal:3,files:4,chat:6,notes:1,herdr:6,preview:7,browser:8,system:9};switch(a.action){case "state":break;case "open":if(!map[a.app])throw new Error("Unknown app");if(open(map[a.app])<0)throw new Error("Window limit");break;case "workspace":if(!Number.isInteger(a.workspace)||a.workspace<1||a.workspace>10)throw new Error("Workspace must be 1..10");select(a.workspace-1);break;case "rename":if(typeof a.name!=="string"||!a.name.trim())throw new Error("Name required");wm.rename(a.name);break;case "focus":case "close":{const index=wm.spaces().findIndex((_,i)=>wm.allIds(i).includes(a.window));if(index<0)throw new Error("Unknown window");if(a.action==="close"){if(wm.apps()[a.window]===6&&agent.pending()>=0)throw new Error("Cannot close the running agent's herdr window");close(a.window);}else{select(index);focus(a.window);}break;}case "split":mutate(wm.toggleSplit);break;case "fullscreen":mutate(wm.toggleZoom);break;case "resize":if(typeof a.value!=="number"||!Number.isFinite(a.value)||Math.abs(a.value)>.2)throw new Error("Resize delta must be -0.2..0.2");mutate(()=>wm.resize(a.value));break;case "style":mutate(()=>style(a.setting,a.value));break;default:throw new Error("Unknown desktop action");}
-  return {workspace:ws()+1,focused:focusId(),style:{wallpaper:wallpaper(),gaps:wm.gaps(),bar:wm.bar(),opacity:transparent()},windows:wm.spaces().flatMap((s,index)=>wm.allIds(index).map(id=>({id,app:title(wm.apps()[id]).toLowerCase(),workspace:index+1,rect:index===ws()?wm.rect(id):null})))};
+  return {workspace:ws()+1,focused:focusId(),menu:menu(),style:{wallpaper:wallpaper(),gaps:wm.gaps(),bar:wm.bar(),opacity:transparent()},windows:wm.spaces().flatMap((s,index)=>wm.allIds(index).map(id=>({id,app:title(wm.apps()[id]).toLowerCase(),workspace:index+1,rect:index===ws()?wm.rect(id):null})))};
  }
  const entries=()=>{
   const go=(label:string,page:string)=>({label,hint:">",action:()=>showMenu(page)});
@@ -107,7 +133,7 @@ export default function OmaBerryDesktop(){
   try{herdr.restore(JSON.parse(g.omaFiles?.read("data/herdr-app.json").text||"null"));}catch{}
   herdr.importHistory(agent.histories().flatMap((history,id)=>history.length?[id]:[]));
   for(const id of slots)if(wm.apps()[id]===8)browser.open(id,true);
-  live.start();sync();});
+  live.start();g.omaExec?.write(live.root()+"/omaberry-control.py",CONTROL_CLIENT);control.start();sync();});
  return <View debugName="OmaBerryDwindleDesktop" class="w-full h-full bg-[#1a1b26]">
   <Desktop wallpaper={wallpaper}/>
   <Show when={wm.bar()}><View class="absolute left-0 top-0 w-full h-[24] px-2 flex-row items-center gap-2" style={{bgColor:theme().panel}}>
@@ -118,13 +144,13 @@ export default function OmaBerryDesktop(){
   <For each={slots}>{id=><Show when={wm.visible(id)}><View class="absolute flex-col border overflow-hidden p-1" style={{insetL:wm.rect(id).x,insetT:wm.rect(id).y,width:wm.rect(id).width,height:wm.rect(id).height,borderColor:focusId()===id?theme().accent:theme().border,bgColor:transparent()?0xe61c1413:theme().panel}}>
    <Show when={wm.apps()[id]===3}><View class="w-full h-full flex-col overflow-hidden" focusable onPress={()=>focus(id)}><Text class="font-mono text-xs text-[#c0caf5]" style={{lineHeight:12}}>{terminals[id].output()}</Text></View></Show>
    <Show when={wm.apps()[id]===4}>
-    <View class="h-[16] overflow-hidden" focusable onPress={()=>focus(id)}><Text class="font-mono text-xs text-[#9ece6a]">{files[id].selected()||searches[id].typed()||fileLabel(files[id].breadcrumb())}</Text></View>
-    <View class="flex-1 flex-col overflow-hidden" focusable onPress={()=>focus(id)}><Show when={!files[id].selected()}><For each={files[id].visible()}>{entry=><View class="h-[20] flex-col justify-center focus:bg-[#292e42]" focusable onPress={()=>act(id,()=>files[id].open(entry))}><Text class="font-mono text-xs text-[#c0caf5]">{(entry.directory?"+ ":"  ")+fileLabel(entry.name)}</Text></View>}</For><Text class="text-xs text-[#f7768e]">{files[id].error()}</Text></Show><Show when={!!files[id].selected()}><Text class="font-mono text-xs text-[#c0caf5]" style={{lineHeight:12}}>{files[id].preview()}</Text></Show></View>
-    <View class="flex-row"><Button label="Back" action={()=>act(id,()=>files[id].back())}/><Button label="<" action={()=>act(id,()=>files[id].next(-1))}/><Button label=">" action={()=>act(id,()=>files[id].next(1))}/><Text class="font-mono text-xs text-[#565f89]">{files[id].page()+"/"+files[id].pages()}</Text></View>
+    <View class="h-[16] overflow-hidden" focusable onPress={()=>focus(id)}><Text class="text-xs text-[#9ece6a]">{files[id].selected()||searches[id].typed()||fileLabel(files[id].breadcrumb())}</Text></View>
+    <View class="flex-1 flex-col overflow-hidden" focusable onPress={()=>focus(id)}><Show when={!files[id].selected()}><For each={files[id].visible()}>{entry=><View class="h-[20] flex-col justify-center focus:bg-[#292e42]" focusable onPress={()=>act(id,()=>files[id].open(entry))}><Text class="text-xs text-[#c0caf5]">{(entry.directory?"+ ":"  ")+fileLabel(entry.name)}</Text></View>}</For><Text class="text-xs text-[#f7768e]">{files[id].error()}</Text></Show><Show when={!!files[id].selected()}><Text class="text-xs text-[#c0caf5]" style={{lineHeight:12}}>{files[id].preview()}</Text></Show></View>
+    <View class="flex-row"><Button label="Back" action={()=>act(id,()=>files[id].back())}/><Button label="<" action={()=>act(id,()=>files[id].next(-1))}/><Button label=">" action={()=>act(id,()=>files[id].next(1))}/><Text class="text-xs text-[#565f89]">{files[id].page()+"/"+files[id].pages()}</Text></View>
    </Show>
-   <Show when={wm.apps()[id]===6}><HerdrApp herdr={herdr} agent={agent} drafts={drafts} theme={theme} width={()=>wm.rect(id).width-10} columns={chatCols} focus={()=>focus(id)} session={session} project={project} newAgent={newAgent} shell={shell} menu={showMenu}/></Show>
+   <Show when={wm.apps()[id]===6}><HerdrApp herdr={herdr} agent={agent} drafts={drafts} theme={theme} width={()=>wm.rect(id).width-10} columns={chatCols} focus={()=>focus(id)} session={session} project={project} newAgent={newAgent} directory={(path:string)=>{try{herdrTool({action:"directory",path});}catch(e:any){setNotice(e.message);}}} file={(entry:any)=>{const path=herdr.path(),wid=open(4);if(wid>=0){files[wid].load(path);files[wid].open(entry);}}} shell={shell} menu={showMenu}/></Show>
    <Show when={wm.apps()[id]===8}><BrowserPane browser={browser} id={id} focus={()=>focus(id)}/></Show>
-   <Show when={wm.apps()[id]===9}><View class="w-full h-full flex-col overflow-hidden"><Text class="text-xs text-[#c0caf5]" style={{lineHeight:14}}>{"OmaBerry 0.10.0\nPocketJS / QNX\n\n"+(agent.configured()?"DeepSeek configured":"DeepSeek not configured")+"\n"+live.root()+"\n\nShell: /bin/ksh\nBrowser: native WebKit\nDesktop windows: "+wm.apps().filter(Boolean).length+" / 16\nAgent sessions: "+herdr.sessions().length+" / 16"}</Text><Button label="Open shell" action={()=>open(3)}/><Button label="Open browser" action={()=>open(8)}/></View></Show>
+   <Show when={wm.apps()[id]===9}><View class="w-full h-full flex-col overflow-hidden"><Text class="text-xs text-[#c0caf5]" style={{lineHeight:14}}>{"OmaBerry 0.11.0\nPocketJS / QNX\n\n"+(agent.configured()?"DeepSeek configured":"DeepSeek not configured")+"\n"+live.root()+"\n\nShell: /bin/ksh\nBrowser: native WebKit\nDesktop windows: "+wm.apps().filter(Boolean).length+" / 16\nAgent sessions: "+herdr.sessions().length+" / 16"}</Text><Button label="Open shell" action={()=>open(3)}/><Button label="Open browser" action={()=>open(8)}/></View></Show>
    <Show when={wm.apps()[id]===7}><LivePreview ui={live} width={wm.rect(id).width-10}/></Show>
    <Show when={wm.apps()[id]===1}><View class="flex-1 flex-col overflow-hidden" focusable onPress={()=>focus(id)}><Text class="text-xs text-[#c0caf5]" style={{lineHeight:12}}>{chatLines(notes[id].typed(),cols(id)-3).slice(-rows(id)).map((line,i)=>String(i+1).padStart(2," ")+" "+line).join("\n")||" 1  Start typing..."}</Text></View></Show>
   </View></Show>}</For>
@@ -133,7 +159,7 @@ export default function OmaBerryDesktop(){
    <View class="h-[24] flex-row items-center"><Image class="w-[16] h-[16]" src="icon-omaberry.png"/><Text class="font-mono text-xs text-[#a9b1d6]">{"  "+(query()|| (menu()==="root"?"OmaBerry":menu()[0].toUpperCase()+menu().slice(1)))+"_"}</Text></View>
    <For each={entries()}>{(e,i)=><View class={i()===choice()?"h-[24] px-1 flex-row items-center justify-between bg-[#292e42]":"h-[24] px-1 flex-row items-center justify-between focus:bg-[#292e42]"} focusable onPress={e.action}><Text class="font-mono text-xs text-[#c0caf5]">{e.label}</Text><Text class="font-mono text-xs text-[#565f89]">{e.hint}</Text></View>}</For>
    <Show when={menu()==="keys"}><Text class="font-mono text-xs text-[#c0caf5]" style={{lineHeight:14}}>{KEYS.slice(help(),help()+12).join("\n")}</Text><View class="flex-row"><Button label="<" action={()=>setHelp(Math.max(0,help()-12))}/><Button label=">" action={()=>setHelp(Math.min(KEYS.length-12,help()+12))}/></View></Show>
-   <Show when={menu()==="about"}><Text class="font-mono text-xs text-[#a9b1d6]" style={{lineHeight:14}}>{"OmaBerry 0.10.0 / QNX\nOmarchy dwindle / Tokyo Liftoff\nBerryCore + DeepSeek tools\nherdr projects + native browser\nMenu key: hold for Super chords\nBackspace: back / Menu: dismiss"}</Text></Show>
+   <Show when={menu()==="about"}><Text class="font-mono text-xs text-[#a9b1d6]" style={{lineHeight:14}}>{"OmaBerry 0.11.0 / QNX\nOmarchy dwindle / Tokyo Liftoff\nBerryCore + DeepSeek tools\nherdr projects + native browser\nMenu key: hold for Super chords\nBackspace: back / Menu: dismiss"}</Text></Show>
   </FocusScope></Show>
  </View>;
 }

@@ -4,10 +4,10 @@ export type FileEntry = {name:string;directory:boolean;link:boolean;size:number}
 export function previewLines(text:string,columns=42):string[] {
   const lines:string[]=[];
   for(const source of text.replace(/\r\n?/g,"\n").split("\n")) {
-    let row="";
+    let row="",width=0;
     for(const ch of source) {
-      const value=ch==="\t"?" ".repeat(4-(Array.from(row).length%4)):ch.charCodeAt(0)<32?" ":ch;
-      for(const item of value) {row+=item;if(Array.from(row).length===columns){lines.push(row);row="";}}
+      const value=ch==="\t"?" ".repeat(4-(width%4)):ch.charCodeAt(0)<32?" ":ch;
+      for(const item of value) {const cells=(item.codePointAt(0)||0)>255?2:1;if(row&&width+cells>columns){lines.push(row);row="";width=0;}row+=item;width+=cells;if(width>=columns){lines.push(row);row="";width=0;}}
     }
     if(row || source.length===0) lines.push(row);
   }
@@ -46,16 +46,16 @@ export function createFiles(query:()=>string=()=>"", clearQuery:()=>void=()=>{},
   function back() {
     if(selected()){setSelected("");setError("");return;}
     if(query()){clearQuery();setOffset(0);setPagedQuery("");return;}
-    if(path()!==root)load(path().slice(0,path().lastIndexOf("/")) || root);
+    if(path()!==root&&path()!=="/")load(path().slice(0,path().lastIndexOf("/")) || "/");
   }
   const previewOffset=()=>Math.min(Math.floor(line()/textRows())*textRows(),Math.max(0,Math.floor((lines().length-1)/textRows())*textRows()));
   function next(delta:number) {
     if(selected())setLine(Math.min(Math.max(0,previewOffset()+delta*textRows()),Math.max(0,Math.floor((lines().length-1)/textRows())*textRows())));
     else {const next=Math.min(Math.max(0,listOffset()+delta*listRows()),Math.max(0,Math.floor((filtered().length-1)/listRows())*listRows()));setPagedQuery(query());setOffset(next);}
   }
-  return {path,selected,error,info,limited,entries,offset,line,lines,open,back,next,query,filtered,
+  return {load,path,selected,error,info,limited,entries,offset,line,lines,open,back,next,query,filtered,
     enter:()=>{if(!loaded)load();},refresh:()=>load(),home:()=>load(root),
-    breadcrumb:()=>"BerryCore"+path().slice(root.length),
+    breadcrumb:()=>path()===root||path().startsWith(root+"/")?"BerryCore"+path().slice(root.length):path(),
     visible:()=>filtered().slice(listOffset(),listOffset()+listRows()),
     preview:()=>lines().slice(previewOffset(),previewOffset()+textRows()).join("\n"),
     page:()=>selected()?Math.floor(previewOffset()/textRows())+1:Math.floor(listOffset()/listRows())+1,

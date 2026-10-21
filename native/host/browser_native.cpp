@@ -119,4 +119,5 @@ extern "C" void oma_browser_render(int width,int height){
  for(int i=0;i<16;i++){Browser *b=get(i);if(!b||!b->visible||!b->ready)continue;GLuint texture=b->texture->textureId();if(!texture)continue;float l=float(b->x)*2/width-1,r=float(b->x+b->w)*2/width-1,t=1-float(b->y)*2/height,bot=1-float(b->y+b->h)*2/height;GLfloat vertices[]={l,t,0,1,l,bot,0,0,r,t,1,1,r,bot,1,0};glScissor(b->x,height-b->y-b->h,b->w,b->h);glBindTexture(GL_TEXTURE_2D,texture);glEnableVertexAttribArray(0);glEnableVertexAttribArray(1);glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,4*sizeof(float),vertices);glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,4*sizeof(float),vertices+2);glDrawArrays(GL_TRIANGLE_STRIP,0,4);if(i==focused){glScissor(b->x+int(b->px),height-b->y-int(b->py)-6,4,6);glClearColor(.6f,.8f,.4f,1);glClear(GL_COLOR_BUFFER_BIT);}}
  glDisableVertexAttribArray(0);glDisableVertexAttribArray(1);glDisable(GL_SCISSOR_TEST);glBindFramebuffer(GL_FRAMEBUFFER,framebuffer);
 }
+#include "screen_native_impl.h"
 #include <browser_native.moc>

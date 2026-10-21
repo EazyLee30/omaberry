@@ -9,7 +9,8 @@ vm.createContext(c);vm.runInContext(code+"\nglobalThis.make=createFiles;globalTh
 const f=c.globalThis.make();f.enter();assert.equal(listings.length,1);f.enter();assert.equal(listings.length,1);assert.equal(f.visible().length,5);assert.equal(f.pages(),3);
 f.next(1);assert.equal(f.offset(),5);f.open(f.visible()[0]);assert.equal(reads[0],"/berrycore/file 5");assert.match(f.preview(),/line 0/);f.next(1);assert.match(f.preview(),/^line 10/);f.next(1);f.next(1);assert.equal(f.page(),3);f.back();assert.equal(f.offset(),5);
 f.home();f.open(f.visible()[0]);assert.equal(f.path(),"/berrycore/folder");f.back();assert.equal(f.path(),root);f.back();assert.equal(f.path(),root);
-assert.deepEqual(Array.from(c.globalThis.wrap("a\tb\r\nc")),["a   b","c"]);assert.equal(c.globalThis.wrap("x".repeat(43)).length,2);assert.equal(Array.from(c.globalThis.wrap("😀".repeat(43))[0]).length,42);assert.equal(c.globalThis.label("bad\nname"),"bad?name");
+assert.deepEqual(Array.from(c.globalThis.wrap("a\tb\r\nc")),["a   b","c"]);assert.equal(c.globalThis.wrap("x".repeat(43)).length,2);assert.equal(Array.from(c.globalThis.wrap("😀".repeat(43))[0]).length,21);assert.equal(c.globalThis.label("bad\nname"),"bad?name");
+assert.deepEqual(Array.from(c.globalThis.wrap("原生UI已更新",8)),["原生UI已","更新"]);assert.deepEqual(Array.from(c.globalThis.wrap("中文\tA",8)),["中文    ","A"]);
 api.read=()=>({text:"",size:10,binary:true,truncated:false,error:""});f.open(f.entries()[1]);assert.match(f.preview(),/Binary file/);
 api.read=()=>({text:"",size:0,binary:false,truncated:false,error:"Permission denied"});f.open(f.entries()[1]);assert.match(f.preview(),/Permission denied/);f.back();assert.equal(f.error(),"");
 console.log("✓ Native files: directory/file pagination, navigation retention, paths with spaces, text wrapping, Unicode, binary/errors");
@@ -24,3 +25,6 @@ small=false;assert.match(sized.preview(),/^line 0/);assert.equal(sized.preview()
 sized.next(1);assert.match(sized.preview(),/^line 19/);small=true;assert.match(sized.preview(),/^line 18/);
 sized.back();assert.equal(sized.visible()[0].name,"file 3");small=false;assert.equal(sized.visible()[0].name,"folder");
 console.log("✓ Files resize: list/preview adapt to tiles, keep position, and clamp pages after maximize");
+f.load("/private/workspace");assert.equal(f.breadcrumb(),"/private/workspace");
+f.open({name:"ui.js",directory:false,link:false,size:10});assert.equal(f.selected(),"ui.js");f.back();f.back();assert.equal(f.path(),"/private");f.back();assert.equal(f.path(),"/");f.back();assert.equal(f.path(),"/");f.home();assert.equal(f.breadcrumb(),"BerryCore");
+console.log("✓ herdr external directories keep their real breadcrumb and navigate to filesystem root");

@@ -1,0 +1,10 @@
+import {strict as assert} from 'node:assert';
+import vm from 'node:vm';
+let frame=()=>{},now=1000,request:any={},busy=false,active=true,writes:any[]=[],alive:any[]=[],ops:any[]=[],capture:any={state:'pending'};
+const c:any={Date:{now:()=>now},onFrame:(f:any)=>frame=f,omaFiles:{read:(p:string)=>({text:JSON.stringify(p.includes('response')?{id:'replay'}:request)})},omaExec:{write:(p:any,t:any)=>{writes.push(JSON.parse(t));}},omaScreen:{active:()=>active},omaInput:{keepAlive:(v:any)=>alive.push(v)},busy:()=>busy,screen:{begin:(a:any)=>ops.push(a),poll:()=>capture,cancel:()=>{}},handlers:{desktop:(a:any)=>({workspace:a.workspace}),native_ui:()=>({ok:true})}};vm.createContext(c);
+const code=new Bun.Transpiler({loader:'ts'}).transformSync((await Bun.file(new URL('../native/src/control-bridge.ts',import.meta.url)).text()).replace(/^import .*;\n/gm,'').replace(/export /g,''));vm.runInContext(code+'\nglobalThis.b=createControlBridge(()=>"/private/workspace",busy,screen,handlers)',c);c.b.start();const ticks=()=>{for(let i=0;i<6;i++)frame()};
+request={id:'replay',createdAt:now,method:'desktop',args:{action:'open'}};ticks();assert.equal(writes.length,0);
+request={...request,id:'busy'};busy=true;ticks();assert.equal(writes.at(-1).error,'Built-in agent is busy');assert.equal(alive.length,0);busy=false;
+request={...request,id:'move',args:{action:'workspace',workspace:2}};ticks();assert(c.b.busy());assert.equal(ops.length,1);capture={state:'done',id:3,path:'data/agent-screen-3.png',dataUrl:'data:image/png;base64,AA=='};frame();assert.equal(writes.at(-1).observation.path,'/private/workspace/../agent-screen-3.png');assert(!JSON.stringify(writes).includes('base64'));assert.deepEqual(alive,[true,false]);assert(!c.b.busy());
+request={...request,id:'expired',createdAt:-100000};ticks();assert.equal(writes.at(-1).error,'Expired request');active=false;request={...request,id:'inactive',createdAt:now};ticks();assert.equal(writes.at(-1).error,'OmaBerry must be foreground');
+console.log('✓ On-phone control IPC: replay protection, agent ownership, screenshot receipts, no image payload in response files, foreground and expiry');

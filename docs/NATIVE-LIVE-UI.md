@@ -1,6 +1,6 @@
 # Live PocketJS UI in herdr
 
-OmaBerry 0.10.0 treats herdr as one native desktop application. It has its own projects and up to sixteen agent sessions, independent of the desktop's numbered workspaces. There is no separate herdr titlebar. The sidebar reports actual built-in DeepSeek tasks; it does not invent Codex/Claude processes. Every new shell and preview opens as a desktop tile, never a nested layout inside herdr.
+OmaBerry 0.11.0 treats herdr as one native desktop application. It has its own projects and up to sixteen agent sessions, independent of the desktop's numbered workspaces. There is no separate herdr titlebar. The sidebar reports actual built-in DeepSeek tasks; it does not invent Codex/Claude processes. Every new shell and preview opens as a desktop tile, never a nested layout inside herdr.
 
 ## Edit → apply → see
 
@@ -12,7 +12,7 @@ OmaBerry 0.10.0 treats herdr as one native desktop application. It has its own p
 
 External processes running with the app user’s file access can also edit `ui.js`; a one-second file watcher applies changes. The herdr shell starts in that private workspace. Source and button state survive application restarts.
 
-The result exposes `revision`, `displayedRevision`, `nativeFrame`, `visible`, the validated native component tree and current theme. An agent apply only reports `presentation: "presented"` once the matching preview is visible, its menu is closed, and at least two native frames have been presented. A hidden/background preview times out with an explicit error. This is presentation evidence, not a screenshot or a claim that a vision model inspected the pixels.
+The result exposes `revision`, `displayedRevision`, `nativeFrame`, `visible`, the validated native component tree and current theme. An agent apply only reports `presentation: "presented"` once the matching preview is visible, its menu is closed, and at least two native frames have been presented. A hidden/background preview times out with an explicit error. After this presentation check, the agent captures the actual composed framebuffer and sends the image to DeepSeek Flash. The `screen` tool supports further observations, clicks, typing and shortcuts; each action returns another image. Source-tree validity still does not establish visual correctness: the model must inspect the image and exercise the changed control.
 
 ## Source format
 

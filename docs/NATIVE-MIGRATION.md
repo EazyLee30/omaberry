@@ -1,6 +1,6 @@
 # OmaBerry native migration
 
-Current development is **PocketJS native only**. Version 0.8.1 uses the supplied OmaBerry logo in the top-left menu trigger and BB10 launcher. The desktop has ten workspaces, recursive tiling, BerryCore PTYs, Files, Notes, Chinese Chat, local DeepSeek tools and a herdr workspace sidebar. The old browser app was removed from the development phone; browser sources remain historical.
+Current development is **PocketJS native only**. Version 0.11.0 adds real framebuffer observations and local screen control to the built-in DeepSeek agent. herdr has a project directory above its agent list, with session tabs at right. The desktop has ten workspaces, recursive tiling, BerryCore PTYs, Files, Notes and an embedded WebKit browser. The supplied OmaBerry logo opens the menu and identifies the native BB10 launcher. The old browser-based desktop was removed from the development phone; its sources remain historical. See the [0.11 verification record](NATIVE-0110.md) and the separate [DSH/Pi/OpenCode runtime audit](NATIVE-AGENT-RUNTIMES.md).
 
 This document is a chronological verification record. Descriptions under older versions refer to those versions, not the current interface. Use the [project README](../README.md), [native guide](../native/README.md) and [shortcut map](NATIVE-SHORTCUTS.md) for current behavior.
 

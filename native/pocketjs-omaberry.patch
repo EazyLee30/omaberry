@@ -1,8 +1,8 @@
 diff --git a/engine/quickjs-c/pocket_runtime.c b/engine/quickjs-c/pocket_runtime.c
-index d4cd455..5aae0f2 100644
+index d4cd455..923eff8 100644
 --- a/engine/quickjs-c/pocket_runtime.c
 +++ b/engine/quickjs-c/pocket_runtime.c
-@@ -3,6 +3,16 @@
+@@ -3,6 +3,17 @@
  #include "pocket_ui_cabi.h"
  #include "pocket_spec.h"
  #include "quickjs.h"
@@ -15,23 +15,24 @@ index d4cd455..5aae0f2 100644
 +#include "../../hosts/blackberry-classic-qnx/theme_qjs.h"
 +#include "../../hosts/blackberry-classic-qnx/ui_qjs.h"
 +#include "../../hosts/blackberry-classic-qnx/browser_qjs.h"
++#include "../../hosts/blackberry-classic-qnx/screen_qjs.h"
 +#endif
  #ifdef POCKET_RUNTIME_EXTENSION
  #include "pocketjs_symbian_extension.h"
  /* Reuse the existing native core ABI, including its compatibility name. */
-@@ -557,6 +567,9 @@ static int add_host_operation(
+@@ -557,6 +568,9 @@ static int add_host_operation(
  }
- 
+
  static int install_host(int width, int height) {
 +#ifdef __QNXNTO__
-+  if (!oma_install_terminal(context, global) || !oma_install_files(context, global) || !oma_install_ai(context, global) || !oma_install_exec(context, global) || !oma_install_ime(context, global) || !oma_install_theme(context, global) || !oma_install_ui(context, global) || !oma_install_browser(context, global)) return 0;
++  if (!oma_install_terminal(context, global) || !oma_install_files(context, global) || !oma_install_ai(context, global) || !oma_install_exec(context, global) || !oma_install_ime(context, global) || !oma_install_theme(context, global) || !oma_install_ui(context, global) || !oma_install_browser(context, global) || !oma_install_screen(context, global)) return 0;
 +#endif
  #ifdef POCKET_OFFLOAD_POSIX
    if (!install_offload(context, global)) return 0;
  #endif
-@@ -658,6 +671,14 @@ static int drain_jobs(void) {
+@@ -658,6 +672,14 @@ static int drain_jobs(void) {
  }
- 
+
  void pocket_runtime_shutdown(void) {
 +#ifdef __QNXNTO__
 +  {int slot;for(slot=0;slot<OMA_TERMINALS;slot++){oma_slot=slot;oma_close();}}
@@ -44,9 +45,9 @@ index d4cd455..5aae0f2 100644
  #ifdef POCKET_RUNTIME_EXTENSION
    if (native_extension && native_extension->shutdown) native_extension->shutdown(native_gl_current);
    native_extension = NULL;
-@@ -811,6 +832,43 @@ int pocket_runtime_boot(
+@@ -811,6 +833,47 @@ int pocket_runtime_boot(
  }
- 
+
  /* One guest turn (frame call + job drain), then `tick_count` core ticks. */
 +/* ── pending text ────────────────────────────────────────────────────────
 + * The frame wire carries a button mask and touch contacts; it has nowhere to
@@ -76,7 +77,11 @@ index d4cd455..5aae0f2 100644
 +    unsigned int next = (text_queue_head + 1) % POCKET_TEXT_QUEUE;
 +    size_t chunk = length - offset;
 +    if (next == text_queue_tail) return 0;   /* full: drop the rest */
-+    if (chunk > POCKET_TEXT_SLOT) chunk = POCKET_TEXT_SLOT;
++    if (chunk > POCKET_TEXT_SLOT) {
++      chunk = POCKET_TEXT_SLOT;
++      while (chunk > 0 && (utf8[offset + chunk] & 0xc0) == 0x80) chunk--;
++      if (chunk == 0) return 0;
++    }
 +    memcpy(text_queue[text_queue_head], utf8 + offset, chunk);
 +    text_queue_len[text_queue_head] = (unsigned int)chunk;
 +    text_queue_head = next;
@@ -88,7 +93,7 @@ index d4cd455..5aae0f2 100644
  static int run_frame(
    uint32_t buttons,
    const PocketRuntimeContact *contacts,
-@@ -876,14 +934,52 @@ static int run_frame(
+@@ -876,14 +939,52 @@ static int run_frame(
        take_exception(context); runtime_failed = 1; return 0;
      }
    }
@@ -150,7 +155,7 @@ index a169040..8aeeaf5 100644
 @@ -51,6 +51,21 @@ typedef struct {
  } PocketRuntimeInput;
  int pocket_runtime_tick(const PocketRuntimeInput *input);
- 
+
 +/*
 + * Queue typed characters for the next guest turn.
 + *
@@ -179,7 +184,7 @@ index e40d60a..5c99ff8 100644
    codepoints: number[];
 +  slots?: number[];
  }
- 
+
  /** Character coverage is independent of the JS source graph. Runtime file
 @@ -14,7 +15,7 @@ export function readFontConfig(path: string, onRead: (path: string) => void = ()
    const value = JSON.parse(readFileSync(path, "utf8"));
@@ -292,7 +297,7 @@ index 0044703..fdb9d45 100644
 @@ -16,6 +16,7 @@ if (typeof (globalThis as { queueMicrotask?: unknown }).queueMicrotask !== "func
    };
  }
- 
+
 +import { __setText } from "./text-input.ts";
  import {
    detectHost,
@@ -322,7 +327,7 @@ index 811e786..4937104 100644
 +    <description>OmaBerry native tiling desktop with BerryCore and DeepSeek tools.</description>
      <author>PocketJS</author>
      <platformVersion>10.3.1.995</platformVersion>
- 
+
      <asset path="icon.png">icon.png</asset>
      <asset path="app.js">app.js</asset>
      <asset path="app.pak">app.pak</asset>
@@ -330,13 +335,13 @@ index 811e786..4937104 100644
 +    <asset path="Tokyo-Liftoff-CREDITS.txt">Tokyo-Liftoff-CREDITS.txt</asset>
 +    <asset path="Tokyo-Liftoff-LICENSE.txt">Tokyo-Liftoff-LICENSE.txt</asset>
 +    <asset path="OFL-NotoSansSC.txt">OFL-NotoSansSC.txt</asset>
- 
+
      <configuration name="Device-Release">
          <platformArchitecture>armle-v7</platformArchitecture>
 @@ -29,5 +33,9 @@
          <image>icon.png</image>
      </icon>
- 
+
 +    <permission>access_shared</permission>
 +    <permission>access_internet</permission>
 +    <permission>run_when_backgrounded</permission>
@@ -344,10 +349,10 @@ index 811e786..4937104 100644
      <env var="LD_LIBRARY_PATH" value="app/native/lib"/>
  </qnx>
 diff --git a/hosts/blackberry-classic-qnx/main.c b/hosts/blackberry-classic-qnx/main.c
-index 83ba130..c48e3a5 100644
+index 83ba130..7d8f06d 100644
 --- a/hosts/blackberry-classic-qnx/main.c
 +++ b/hosts/blackberry-classic-qnx/main.c
-@@ -14,11 +14,15 @@
+@@ -14,11 +14,16 @@
  #include <errno.h>
  #include <limits.h>
  #include <stdint.h>
@@ -360,12 +365,18 @@ index 83ba130..c48e3a5 100644
 +#include <time.h>
 +#include "trackpad_motion.h"
 +#include "browser_native.h"
- 
++#include "screen_native.h"
+
  #ifndef POCKET_BUILD_ID
  #error "POCKET_BUILD_ID must identify the concrete BlackBerry QNX build"
-@@ -56,6 +60,13 @@ static int runtime_ready;
+@@ -55,7 +60,18 @@ static int app_shutdown;
+ static int runtime_ready;
  static PocketInputState input;
- 
+
++static int injected_click, injected_x, injected_y;
++int oma_host_active(void){return app_active&&!app_shutdown;}
++int oma_host_click(int x,int y){if(!oma_host_active()||injected_click||x<0||y<0||x>=surface_width||y>=surface_height)return 0;injected_x=x;injected_y=y;injected_click=2;return 1;}
++int oma_host_text(const char *text,size_t length){return oma_host_active()&&length<=1024&&pocket_runtime_push_text((const unsigned char *)text,length);}
  static unsigned long frame_count;
 +extern void pocket_runtime_ui_presented(void);
 +static volatile sig_atomic_t capture_requested;
@@ -377,7 +388,7 @@ index 83ba130..c48e3a5 100644
  static unsigned long touch_event_count;
  static unsigned long keyboard_event_count;
  static unsigned long trackpad_event_count;
-@@ -68,6 +79,8 @@ static int last_trackpad_buttons;
+@@ -68,6 +84,8 @@ static int last_trackpad_buttons;
  static int last_key_sym;
  static int last_key_scan;
  static int last_key_flags;
@@ -386,7 +397,7 @@ index 83ba130..c48e3a5 100644
  static unsigned long last_action_sequence;
  static char status_stage[32] = "starting";
  static char status_detail[256] = "host entry";
-@@ -110,6 +123,8 @@ static void write_status(void)
+@@ -110,6 +128,8 @@ static void write_status(void)
    fprintf(file, "frames=%lu\n", frame_count);
    fprintf(file, "touch_events=%lu\n", touch_event_count);
    fprintf(file, "keyboard_events=%lu\n", keyboard_event_count);
@@ -395,10 +406,10 @@ index 83ba130..c48e3a5 100644
    fprintf(file, "trackpad_events=%lu\n", trackpad_event_count);
    fprintf(file, "trackpad_clicks=%lu\n", trackpad_click_count);
    fprintf(file, "trackpad_displacement=%d,%d\n", last_trackpad_dx, last_trackpad_dy);
-@@ -303,6 +318,18 @@ static uint32_t button_for_key(int symbol)
+@@ -303,6 +323,18 @@ static uint32_t button_for_key(int symbol)
    }
  }
- 
+
 +static int encode_utf8(unsigned char *out, unsigned int cp);
 +
 +#include "text_key.h"
@@ -414,7 +425,7 @@ index 83ba130..c48e3a5 100644
  static void handle_keyboard(screen_event_t event)
  {
    int flags = 0;
-@@ -316,16 +343,115 @@ static void handle_keyboard(screen_event_t event)
+@@ -316,16 +348,115 @@ static void handle_keyboard(screen_event_t event)
    last_key_scan = scan;
    last_key_flags = flags;
    status_dirty = 1;
@@ -524,15 +535,15 @@ index 83ba130..c48e3a5 100644
 +  out[3] = (unsigned char)(0x80 | (cp & 0x3F));
 +  return 4;
  }
- 
+
  static void handle_touch(screen_event_t event, int type)
  {
 +  if(oma_browser_touch(event,type))return;
    int position[2] = {0, 0};
    int id = -1;
    PocketTouchPhase phase;
-@@ -342,6 +468,10 @@ static void handle_touch(screen_event_t event, int type)
- 
+@@ -342,6 +473,10 @@ static void handle_touch(screen_event_t event, int type)
+
  static void handle_trackpad(screen_event_t event)
  {
 +  static oma_trackpad_motion motion;
@@ -542,7 +553,7 @@ index 83ba130..c48e3a5 100644
    int displacement[2] = {0, 0};
    int position[2] = {0, 0};
    int buttons = 0;
-@@ -356,11 +486,30 @@ static void handle_trackpad(screen_event_t event)
+@@ -356,11 +491,30 @@ static void handle_trackpad(screen_event_t event)
    last_trackpad_y = position[1];
    last_trackpad_buttons = buttons;
    status_dirty = 1;
@@ -576,9 +587,9 @@ index 83ba130..c48e3a5 100644
 +  }
 +  last_primary=primary;
  }
- 
+
  static void handle_screen_event(bps_event_t *event)
-@@ -399,6 +548,7 @@ static void handle_navigator_event(bps_event_t *event)
+@@ -399,6 +553,7 @@ static void handle_navigator_event(bps_event_t *event)
        break;
      case NAVIGATOR_WINDOW_INACTIVE:
        app_active = 0;
@@ -586,10 +597,10 @@ index 83ba130..c48e3a5 100644
        set_status("inactive", "window inactive");
        break;
      case NAVIGATOR_ORIENTATION_CHECK:
-@@ -427,6 +577,46 @@ static void handle_event(bps_event_t *event)
+@@ -427,12 +582,53 @@ static void handle_event(bps_event_t *event)
    else if (domain == navigator_get_domain()) handle_navigator_event(event);
  }
- 
+
 +/* Development-host evidence: capture only the empty first app frame. */
 +static void capture_first_frame(void)
 +{
@@ -633,7 +644,14 @@ index 83ba130..c48e3a5 100644
  static int render_frame(void)
  {
    PocketInputSample sample;
-@@ -441,15 +631,26 @@ static int render_frame(void)
+   PocketRuntimeInput frame;
+   unsigned long action_sequence;
+
++  if(injected_click){pocket_input_touch(&input,injected_click==2&&app_active?POCKET_TOUCH_DOWN:POCKET_TOUCH_UP,999,(float)injected_x,(float)injected_y);injected_click--;}
+   pocket_input_sample(&input, &sample);
+   frame.buttons = sample.buttons;
+   frame.touch_down = sample.touch_down;
+@@ -441,15 +637,29 @@ static int render_frame(void)
    frame.touch_hit = sample.touch_down
      ? pocket_runtime_hit_test_bounds((float)frame.touch_x, (float)frame.touch_y)
      : 0;
@@ -654,15 +672,18 @@ index 83ba130..c48e3a5 100644
 +    capture_requested = 0;
 +    capture_first_frame();
 +  }
++  oma_screen_render(surface_width,surface_height,frame_count+1);
 +  if (!eglSwapBuffers(egl_display, egl_surface)) {
++    oma_screen_present(0);
      set_error("OpenGL ES frame presentation failed");
      return 0;
    }
++  oma_screen_present(1);
 +  pocket_runtime_ui_presented();
    frame_count += 1;
    action_sequence = pocket_runtime_action_sequence();
    if (action_sequence != last_action_sequence) {
-@@ -464,9 +665,9 @@ int main(int argc, char **argv)
+@@ -464,9 +674,9 @@ int main(int argc, char **argv)
  {
    Asset java_script = {NULL, 0};
    Asset pack = {NULL, 0};
@@ -671,10 +692,10 @@ index 83ba130..c48e3a5 100644
 -  (void)argc;
 +  oma_browser_init(argc,argv,handle_event);
 +  signal(SIGUSR1, request_capture);
- 
+
    initialize_executable_directory(argv == NULL ? NULL : argv[0]);
    pocket_input_init(&input, 1.0f);
-@@ -475,6 +676,8 @@ int main(int argc, char **argv)
+@@ -475,6 +685,8 @@ int main(int argc, char **argv)
      set_error("bps_initialize failed");
      goto cleanup;
    }
@@ -683,7 +704,7 @@ index 83ba130..c48e3a5 100644
    if (!initialize_graphics()) goto cleanup_bps;
    if (screen_request_events(screen_context) != BPS_SUCCESS ||
        navigator_request_events(0) != BPS_SUCCESS) {
-@@ -485,6 +688,8 @@ int main(int argc, char **argv)
+@@ -485,6 +697,8 @@ int main(int argc, char **argv)
      set_error("cannot read packaged app.js or app.pak");
      goto cleanup_graphics;
    }
@@ -692,14 +713,14 @@ index 83ba130..c48e3a5 100644
    if (!pocket_runtime_boot(
          (const char *)java_script.bytes,
          java_script.length,
-@@ -501,30 +706,17 @@ int main(int argc, char **argv)
+@@ -501,30 +715,17 @@ int main(int argc, char **argv)
      set_error("PocketJS GLES2 backend initialization failed");
      goto cleanup_runtime;
    }
 -  set_status("running", "Hero mounted");
 +  set_status("running", "OmaBerry desktop mounted");
    write_status();
- 
+
    while (!app_shutdown) {
 -    int timeout = app_active ? 0 : -1;
 -    if (bps_get_event(&event, timeout) != BPS_SUCCESS) {
@@ -730,8 +751,8 @@ index 83ba130..c48e3a5 100644
 +    }else {write_status();usleep(50000);}
    }
    exit_code = status_stage[0] == 'e' ? EXIT_FAILURE : EXIT_SUCCESS;
- 
-@@ -535,6 +727,7 @@ cleanup_runtime:
+
+@@ -535,6 +736,7 @@ cleanup_runtime:
      runtime_ready = 0;
    }
  cleanup_graphics:
@@ -759,7 +780,7 @@ index 43e4046..aaf4089 100755
 @@ -94,7 +94,11 @@ first_party_flags=(
    -c /repo/hosts/blackberry-classic-qnx/main.c \
    -o "$objects/main.o"
- 
+
 -"$qcc" "${qnx_target[@]}" \
 +qt_flags=(-I"$QNX_TARGET/usr/include/qt4" -I"$QNX_TARGET/usr/include/qt4/QtCore" -I"$objects" -I/repo/hosts/blackberry-classic-qnx)
 +"$QNX_HOST/usr/bin/moc" "${qt_flags[@]}" /repo/hosts/blackberry-classic-qnx/browser_native.cpp -o "$objects/browser_native.moc"
@@ -788,10 +809,10 @@ index 43e4046..aaf4089 100755
 +  -Wl,--disable-new-dtags -Wl,-rpath,/usr/lib/qt4/lib \
 +  -Wl,-rpath-link,"$QNX_TARGET/armle-v7/usr/lib/qt4/lib" \
 +  -lQtCore -lQtGui -lQtNetwork -lQtXml -lQtSql -lQtScript -lQtDeclarative -lQtSvg -lQtXmlPatterns -lQtOpenGL -lbbcascades -lbb
- 
+
  "$readelf" -h -l -A -d "$staging/pocketjs-classic" > /build/pocketjs-classic.readelf.txt
  "$nm" -g "$staging/pocketjs-classic" > /build/pocketjs-classic.symbols.txt
- 
+
 +cp /repo/apps/blackberry-classic-demo/pinyin.json "$staging/pinyin.json"
 +cp /repo/apps/blackberry-classic-demo/Tokyo-Liftoff-*.txt "$staging/"
 +cp /repo/apps/blackberry-classic-demo/OFL-NotoSansSC.txt "$staging/OFL-NotoSansSC.txt"
@@ -806,7 +827,7 @@ index d4e4f49..54f2950 100644
 @@ -387,16 +387,18 @@ const { fallbackTtfs } = fontConfig;
  if (fallbackTtfs.length || fontConfig.codepoints.length)
    console.log(`  fonts: ${fallbackTtfs.length} fallback face(s), ${fontConfig.codepoints.length} declared characters`);
- 
+
 -const atlases = await bakeAtlases({
 -  codepoints: new Set([...codepoints, ...fontConfig.codepoints]),
 -  slots: styles.usedFontSlots,

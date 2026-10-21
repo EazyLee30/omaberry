@@ -10,6 +10,7 @@ export function createHerdr(root:()=>string){
  function select(id:number){const s=sessions().find(s=>s.id===id);if(!s)return;setProject(s.project);const p=projects().slice();p[s.project]={...p[s.project],selected:id};setProjects(p);}
  function create(){const id=Array.from({length:16},(_,i)=>i).find(i=>!sessions().some(s=>s.id===i));if(id===undefined)return -1;setSessions([...sessions(),{id,project:project(),name:"agent "+(id+1)}]);select(id);return id;}
  function choose(index:number){if(!Number.isInteger(index)||index<0||index>=projects().length)return false;const previous=project();setProject(index);if(selected()<0&&create()<0){setProject(previous);return false;}return true;}
+ function directory(next:string){if(typeof next!=="string"||!next.startsWith("/")||next.length>2048||/[\x00-\x1f]/.test(next))return false;const normalized=next.replace(/\/+$/,"" )||"/";const p=projects().slice();p[project()]={...current(),path:normalized};setProjects(p);return true;}
  function cycle(delta:number){const list=visible();if(list.length)select(list[(list.findIndex(s=>s.id===selected())+delta+list.length)%list.length].id);}
  function snapshot(){return {version:1,project:project(),projects:projects(),sessions:sessions()};}
  function restore(raw:any){try{if(raw?.version!==1||!Array.isArray(raw.projects)||raw.projects.length!==3||!Array.isArray(raw.sessions)||!raw.sessions.length||raw.sessions.length>16||!Number.isInteger(raw.project)||raw.project<0||raw.project>2)throw 0;
@@ -18,5 +19,5 @@ export function createHerdr(root:()=>string){
   setProjects(raw.projects);setSessions(raw.sessions);setProject(raw.project);return true;
  }catch{return false;}}
  function importHistory(ids:number[]){for(const id of ids){if(id>=0&&id<16&&!sessions().some(s=>s.id===id))setSessions([...sessions(),{id,project:0,name:"agent "+(id+1)}]);}}
- return {project,projects,sessions,current,selected,path,visible,select,create,choose,cycle,snapshot,restore,importHistory};
+ return {project,projects,sessions,current,selected,path,visible,select,create,choose,directory,cycle,snapshot,restore,importHistory};
 }
