@@ -6,6 +6,8 @@ On Q20, **hold the physical BlackBerry Menu key as Super**. Tapping and releasin
 
 Physical acceptance on October 21: the user confirmed two Menu + Enter launches produce tiled terminals, Menu + W closes one and fills the freed space, and tapping Menu opens the centered menu. This confirmation applies to that sequence, not every binding listed below.
 
+Following the 0.9.0 native payload update on October 21, the user also confirmed that holding Menu and pressing T opens a new shell tab. The native preview counter changed from 1 to 2 on touch and retained 2 after switching to the agent tab and back.
+
 | Shortcut | Native action |
 | --- | --- |
 | Super + Enter | New BerryCore terminal |

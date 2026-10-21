@@ -160,3 +160,7 @@ Production build: `66de01d27d528473150f5fde9ab20bb7`; BAR SHA-256: `3f05d4cfac4f
 
 
 Final executable, guest JavaScript and PAK were read back from the device and matched the production receipt. Production framebuffer `docs/native-ui.png` shows the restored blue theme, Chinese agent-edited title and persisted Count: 1. `docs/native-herdr.png` shows real chat/shell panes with the final host during scripted verification. The fresh-tab shell began in the private UI workspace; switching back retained an existing shell's `/tmp` cwd, and closing a tab's final pane removed that tab. The BAR excludes the private credential and diagnostic hooks. Diagnostic command/state files were removed; the direct test instance was closed before physical icon-launch acceptance. The system package registry version caveat above remains.
+
+### October 21: physical live UI and session-tab acceptance
+
+After the 0.9.0 native payload update, the user answered “计数保留、新 shell 标签都正常” to the icon-launch acceptance prompt. Tapping Count: 1 changed it to Count: 2; switching to the agent tab and returning to preview retained Count: 2. Holding the physical Menu key and pressing T opened a new shell tab. This confirms native button interaction, state retention across tab switches and the physical Menu + T shortcut. It does not add a physical restart-persistence test or acceptance of every new shortcut; the earlier scripted restart checks remain separate evidence. No code or package change was needed for this confirmation.
