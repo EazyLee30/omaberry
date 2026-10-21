@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/banner.png" alt="OmaBerry rocket launch banner" width="100%">
+</p>
+
 <div align="center">
   <img src="docs/icon.png" alt="OmaBerry logo" width="112" height="112">
   <h1>OmaBerry</h1>

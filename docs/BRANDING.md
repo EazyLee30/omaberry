@@ -4,6 +4,7 @@ The project owner supplied the green OmaBerry logo on October 21, 2026. Its orig
 
 | Asset | Use |
 | --- | --- |
+| `docs/banner.png` | Owner-supplied rocket launch artwork for the README banner |
 | `docs/logo.png` | Original 1254 × 1254 source |
 | `docs/icon.png` | 512 × 512 repository / README icon |
 | `native/src/icon-omaberry.png` | 256 × 256 native texture, top-left bar and centered menu |
@@ -21,4 +22,4 @@ sips -z 114 114 docs/logo.png --out native/host/icon.png
 
 The native texture is listed in `native/src/images.json` for linear sampling. Static image references in `app.tsx` ensure it is included in the resource pack. The packaged-resource check compares its decoded pixels with the source variant.
 
-The old browser banner and icons are historical assets; the current README and native build use the assets above. Product and upstream names remain attributed in the project README; this artwork does not imply affiliation with BlackBerry or Omarchy.
+The README banner preserves the owner-supplied rocket launch artwork. The existing green icon remains in the README and native app. The old browser icons are historical assets; the current README and native build use the assets above. Product and upstream names remain attributed in the project README; this artwork does not imply affiliation with BlackBerry or Omarchy.
