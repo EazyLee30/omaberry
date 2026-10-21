@@ -1,4 +1,4 @@
-# Native desktop 0.9.0
+# Native desktop 0.10.0
 
 The reference is the local `omarchy-src` checkout at `246f33a2fef66411c990860d88e0823ae83987fc`, especially `default/hypr/bindings/{tiling,applications,utilities}.lua`, `default/hypr/looknfeel.lua`, and `default/omarchy/omarchy-menu.jsonc`.
 
@@ -14,11 +14,13 @@ Following the 0.9.0 native payload update on October 21, the user also confirmed
 | Super + W / Q | Close the focused window and its PTY |
 | Super + Space | OmaBerry menu |
 | Super + Alt + Space | Applications |
-| Super + Shift + F / N / A | Files / Notes / agent chat |
-| Super + Ctrl + Enter | Toggle herdr sidebar; start agent + shell panes in an empty workspace |
-| Super + T / Shift + T | New shell / agent tab |
-| Super + [ / ] | Previous / next session tab |
+| Super + Shift + F / N / A | Files / Notes / herdr |
+| Super + Ctrl + Enter | Open or focus the herdr application |
+| Super + T / Shift + T | New desktop shell / herdr agent session |
+| Super + [ / ] | Previous / next herdr agent session |
 | Super + U | Open the native UI preview |
+| Super + B / L | Open Browser / replace its address |
+| Alt + trackpad | Scroll content in the focused app |
 | Super + J | Toggle the focused split's axis |
 | Super + F | Fullscreen / restore |
 | Super + arrows or Menu + trackpad | Focus neighboring window |
@@ -38,6 +40,9 @@ Following the 0.9.0 native payload update on October 21, the user also confirmed
 
 Each new window splits the focused rectangle equally along its longer axis. Splits retain their axis; closing a leaf collapses its parent. There are ten workspaces and sixteen stable window/PTY slots shared across them. Fullscreen restores the same tree. There are no window-manager titlebars, close buttons, global bottom status strip, wordmark or wallpaper label. The herdr view has its own compact project/tab status line. First wallpaper is Liftoff Sunset.
 
-The agent uses DeepSeek function calls with actual local `run_shell`, `read_file`, `write_file`, `desktop` and `native_ui` tools. Shell commands run as the app user, use BerryCore's PATH, have a 1–60 second deadline, return stdout/stderr and exit code, and can be cancelled. File writes are replacements up to 64 KiB, using atomic rename on ordinary filesystems. QNX /tmp resolves to /dev/shmem, which does not support rename; there the tool reports atomic=false and writes directly. Desktop tools inspect/open/focus/close windows, switch workspaces, change splits/fullscreen and adjust wallpaper/gaps/bar/opacity. API credentials remain in private configuration and are scrubbed from tool results. One agent request runs at a time; other chat windows keep independent histories. The herdr sidebar shows these real tasks and workspaces. Each workspace supports up to eight tabs with independent split trees; the sixteen-window limit is shared across all tabs. The + menu creates shell/agent tabs or opens/reloads/undoes the native UI preview. Tab and workspace names can be changed through the desktop tool.
+The agent uses DeepSeek function calls with actual local `run_shell`, `read_file`, `write_file`, `desktop`, `herdr`, `browser` and `native_ui` tools. Shell commands run as the app user, use BerryCore's PATH, have a 1–60 second deadline, return stdout/stderr and exit code, and can be cancelled. File writes are replacements up to 64 KiB, using atomic rename on ordinary filesystems. QNX /tmp resolves to /dev/shmem, which does not support rename; there the tool reports atomic=false and writes directly. Desktop tools inspect/open/focus/close windows, switch workspaces, change splits/fullscreen and adjust wallpaper/gaps/bar/opacity. API credentials remain in private configuration and are scrubbed from tool results. One agent request runs at a time; other herdr agent sessions keep independent histories. herdr has its own projects and agent-session selection. Its **+ shell** action and Menu + T open a desktop window in the selected project directory. Its **+ agent** action creates a session inside herdr. The desktop's 1–10 workspaces only own window layouts. Closing herdr preserves its conversation excerpts; reopening it returns to the same project/session. Legacy 0.9 layouts migrate their shell tabs into desktop tiles and consolidate chat windows into herdr while retaining stored histories.
 
-This is a native adaptation. Upstream herdr's Rust daemon, SSH hosts, detached session CLI/socket protocol, reboot recovery and arbitrary third-party agent detection are not ported. Workspace/tab layouts, live UI source/state, wallpaper, desktop style and bounded chat excerpts persist. Terminal processes and Notes last for the app process lifetime. Omarchy's Linux package management, floating/grouped windows and compositor-specific utilities are not represented as working features. The built-in agent edits live PocketJS `ui.js` modules through `native_ui`; main JSX/native-host/resource-pack rebuilding is still a desktop build operation. See [Native live UI](NATIVE-LIVE-UI.md).
+Trackpad motion uses a dominant axis, small-movement accumulation and a 70 ms repeat limit. During Pinyin composition it moves the highlighted candidate; clicking commits. In a terminal it sends cursor/history arrows and clicking sends Return. In the browser it moves a visible pointer and clicks page content. Menu + trackpad changes desktop focus; Alt + trackpad scrolls. Touch input retains the same active application ownership.
+
+
+This is a native adaptation. Upstream herdr's Rust daemon, SSH hosts, detached session CLI/socket protocol, reboot recovery and arbitrary third-party agent detection are not ported. Desktop layouts and herdr sessions, live UI source/state, wallpaper, desktop style and bounded chat excerpts persist. Terminal processes and Notes last for the app process lifetime. Omarchy's Linux package management, floating/grouped windows and compositor-specific utilities are not represented as working features. The built-in agent edits live PocketJS `ui.js` modules through `native_ui`; main JSX/native-host/resource-pack rebuilding is still a desktop build operation. See [Native live UI](NATIVE-LIVE-UI.md).

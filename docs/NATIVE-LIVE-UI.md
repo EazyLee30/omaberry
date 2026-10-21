@@ -1,13 +1,13 @@
 # Live PocketJS UI in herdr
 
-OmaBerry 0.9.0 keeps herdr’s spaces, agent list, session tabs and terminal panes inside the native PocketJS desktop. There is no separate herdr titlebar. The sidebar reports actual built-in DeepSeek tasks; it does not invent Codex/Claude processes. Each workspace has up to eight tabs, sharing sixteen native window slots across all workspaces.
+OmaBerry 0.10.0 treats herdr as one native desktop application. It has its own projects and up to sixteen agent sessions, independent of the desktop's numbered workspaces. There is no separate herdr titlebar. The sidebar reports actual built-in DeepSeek tasks; it does not invent Codex/Claude processes. Every new shell and preview opens as a desktop tile, never a nested layout inside herdr.
 
 ## Edit → apply → see
 
-1. Open **herdr** from the logo menu. An empty workspace starts with agent and shell panes. Use **+ → New agent tab** for another session.
+1. Open **herdr** from the logo menu. Use **+ → New agent session** for another session, and **New shell window** for a terminal in the selected project.
 2. Ask the agent to change the native preview, for example: `把预览标题改成“你好”，强调色改成绿色，保留计数按钮，应用后检查显示结果。`
 3. The agent calls `native_ui` with `action: "source"`. The response contains the real private `ui.js` path, current source and supported component API.
-4. `write_file` writes the complete edited source. `native_ui apply` evaluates and validates it, opens the native preview tab, and waits for its revision to be presented by the native host.
+4. `write_file` writes the complete edited source. `native_ui apply` evaluates and validates it, opens the native preview window, and waits for its revision to be presented by the native host.
 5. Click the counter or other native buttons. **Reload** applies the current source; **Undo** restores the previous accepted source. **Super + U** opens the preview. The original agent remains attached to its chat while the preview is focused.
 
 External processes running with the app user’s file access can also edit `ui.js`; a one-second file watcher applies changes. The herdr shell starts in that private workspace. Source and button state survive application restarts.
@@ -38,7 +38,7 @@ return {
 
 Styles support `direction` (`row`/`column`), `width`/`height` (1–360 logical units), `padding` (0–24), `gap` (0–16), `grow` (0–1), and `color`/`background`/`border` (`#RRGGBB`). Theme keys are `accent`, `text`, `muted`, `panel`, `sidebar`, `selection`, `border`, and `good`. Theme changes also affect the live herdr frame, tabs and focus borders.
 
-Button actions are `increment` (`key`, `by`), `set` (`key`, primitive `value`), or `open` (`app`: `terminal`, `files`, `chat`, `notes`). State is saved after successful interactions. The schema permits at most 80 nodes, depth 8 and 4,000 total text characters. A source/output is at most 64 KiB.
+Button actions are `increment` (`key`, `by`), `set` (`key`, primitive `value`), or `open` (`app`: `terminal`, `files`, `chat`, `notes`, `herdr`, `browser`). State is saved after successful interactions. The schema permits at most 80 nodes, depth 8 and 4,000 total text characters. A source/output is at most 64 KiB.
 
 ## Recovery and limits
 
@@ -48,4 +48,4 @@ The workspace contains `ui.js` (editable candidate), `ui.active.js` (accepted so
 
 This is an editable native UI extension with real layout, controls and theme changes. It does not recompile arbitrary main-desktop TSX, C bindings or baked image/font packs on the phone. The main desktop still uses the reproducible PocketJS build. Upstream herdr’s daemon, SSH host management, detached terminal processes and external-agent discovery are not implemented.
 
-Layouts and tabs are restored across app launches. PTYs start fresh; they are not detached persistent processes. Each chat restores up to 24 recent message excerpts, with 500 characters per message, rather than unlimited tool transcripts.
+Desktop layouts and herdr sessions are restored across app launches. PTYs start fresh; they are not detached persistent processes. Each chat restores up to 24 recent message excerpts, with 500 characters per message, rather than unlimited tool transcripts.

@@ -1,8 +1,8 @@
 # OmaBerry native development
 
-OmaBerry **0.9.0** is a native PocketJS desktop for BlackBerry Classic / Q20 on BB10/QNX. The active interface includes recursive tiling, BerryCore PTYs, Files, Notes, Chinese Chat, local agent tools and herdr-style spaces/session tabs and live native UI editing. See the [project README](../README.md) for current features and limits; historical prototypes and device acceptance results are in [NATIVE-MIGRATION.md](../docs/NATIVE-MIGRATION.md).
+OmaBerry **0.10.0** is a native PocketJS desktop for BlackBerry Classic / Q20 on BB10/QNX. The active interface includes recursive tiling, BerryCore PTYs, Files, Notes, an independent herdr application with Chinese input and local agents, embedded webpages and live native UI editing. See the [project README](../README.md) for current features and limits; historical prototypes and device acceptance results are in [NATIVE-MIGRATION.md](../docs/NATIVE-MIGRATION.md).
 
-The application runs without a browser, WebView or Node server. TypeScript and Solid JSX compile to PocketJS's guest JavaScript and resource pack; the native QNX host renders the interface and supplies input, PTY, file, process and HTTPS bindings.
+The desktop runs as native PocketJS controls without an HTML shell or Node server. Its Browser app uses a native WebKit texture bridge. TypeScript and Solid JSX compile to PocketJS's guest JavaScript and resource pack; the native QNX host renders the interface and supplies input, PTY, file, process and HTTPS bindings.
 
 ## Source layout
 
@@ -12,6 +12,8 @@ The application runs without a browser, WebView or Node server. TypeScript and S
 | `native/src/tiling.ts` | Ten workspaces, sixteen stable window slots and binary split trees |
 | `native/src/live-ui.ts`, `live-view.tsx` | Editable native UI modules, validation, presentation and rollback |
 | `native/host/ui_eval.h`, `ui_qjs.h` | Isolated QuickJS evaluator and native presented-frame counter |
+| `native/src/herdr.tsx`, `herdr-model.ts` | App-local projects and independent agent sessions |
+| `native/src/browser.tsx`, `native/host/browser_native.cpp` | Native Browser controls and WebKit texture/input compositor |
 | `native/src/agent.ts` | DeepSeek function-call loop, per-chat ownership and cancellation |
 | `native/src/terminal.ts`, `files.ts` | Terminal rendering and file-browser controllers |
 | `native/src/chinese-text.ts` | Offline Pinyin composition |
@@ -74,7 +76,7 @@ python3 scripts/native.py launch --host blackberry
 python3 scripts/native.py status --host blackberry
 ```
 
-`launch` uses the device's existing `/bin/__root` launcher bridge, stops only exact matching OmaBerry processes and requests a native launch. It is specific to the configured development device, not a general-purpose installation or root setup tool. Restarting restores saved workspace/tab layouts and recent chat excerpts, but starts new PTYs; it does not resume running shell processes. Normal use is through the phone's OmaBerry icon.
+`launch` uses the device's existing `/bin/__root` launcher bridge, stops only exact matching OmaBerry processes and requests a native launch. It is specific to the configured development device, not a general-purpose installation or root setup tool. Restarting restores saved desktop layouts and herdr project/session selection and recent chat excerpts, but starts new PTYs; it does not resume running shell processes. Normal use is through the phone's OmaBerry icon.
 
 ## DeepSeek configuration
 
@@ -89,13 +91,13 @@ Provision `data/deepseek.json` separately inside the app's private directory, wi
 
 Do not put credentials in `native/src`, the resource pack, a BAR or Git. The native transport reads the private file, sends HTTPS requests through BerryCore curl with CA verification, and keeps the bearer header out of process arguments. The UI only receives configuration availability and model name.
 
-Chat supplies the model with its conversation and the results of tools it invokes. The agent tools are `run_shell`, `read_file`, `write_file`, `desktop` and `native_ui`. Shell execution uses the app user's permissions and BerryCore environment, a bounded output buffer and a 1–60 second deadline. Stop cancels both transport and command children. File writes are limited to 64 KiB and use atomic replacement where supported; QNX shared-memory paths such as `/tmp` report `atomic=false` for their direct-write fallback.
+Chat supplies the model with its conversation and the results of tools it invokes. The agent tools are `run_shell`, `read_file`, `write_file`, `desktop`, `herdr`, `browser` and `native_ui`. Shell execution uses the app user's permissions and BerryCore environment, a bounded output buffer and a 1–60 second deadline. Stop cancels both transport and command children. File writes are limited to 64 KiB and use atomic replacement where supported; QNX shared-memory paths such as `/tmp` report `atomic=false` for their direct-write fallback.
 
 ## Input and rendering
 
 - Hold the physical Menu key as Super; tap it for the menu. Native shortcut events are separate from typed text.
 - Each focused pane owns its text input. PTYs retain their processes across workspace changes and receive resized row/column dimensions.
-- Chat's CN mode provides an offline Pinyin composer. Space or Enter commits a candidate; ABC returns to Latin input. This is not BB10 system IME integration.
+- herdr's CN mode provides an offline Pinyin composer. Candidates use the bundled CJK font slot. Space, Enter or a trackpad click commits the highlighted candidate; ABC returns to Latin input. This is not BB10 system IME integration.
 - The screen is 720 × 720 physical pixels, with a 360 × 360 logical viewport.
 - Native textures must fit the renderer's limits. Each wallpaper uses four 512 × 512 tiles; the OmaBerry logo uses a 256 × 256 transparent texture with linear sampling.
 - Font slot 0 contains common simplified Chinese glyphs from Noto Sans SC. Other slots stay small; full Unicode/emoji coverage is not claimed.
@@ -114,6 +116,8 @@ After building the guest, validate packaged resources and the native controllers
 bun test/test-native-wallpapers.ts
 bun test/test-native-fonts.ts
 bun test/test-native-tiling.ts
+bun test/test-native-herdr.ts
+bun test/test-native-browser.ts
 bun test/test-native-agent.ts
 bun test/test-native-live-ui.ts
 bun test/test-native-terminal.ts
@@ -138,3 +142,17 @@ A successful build does not establish device input behavior. Compare the install
 Physical Notes editing, persistent shell cwd across navigation, Files filtering/reading, Chinese composition/chat and wallpaper persistence have been accepted on the Q20. On October 21, the user also confirmed the held Menu + Enter sequence opens two tiled terminals, Menu + W closes one and lets the remaining pane fill the space, and a single Menu tap opens the centered menu. This acceptance covers those specific controls; other shortcut combinations retain their separate verification status. Current evidence and its limitations are recorded in the [verification history](../docs/NATIVE-MIGRATION.md).
 
 `test/native-ui.c` exercises the isolated evaluator against the pinned QuickJS source (compile with its `quickjs.c`, `cutils.c`, `dtoa.c`, `libregexp.c`, `libunicode.c` and `-lm`). It checks syntax errors, infinite-loop interruption, memory/output bounds, isolated globals and recovery after failed evaluations.
+
+## Embedded web engine
+
+`browser_native.cpp` wraps the BB10 SDK's `WebPage`, `WebPageCompositor`, `WebPageTexture` and `WebPageEventHandler`. It waits for page initialization before connecting the compositor, processes platform events through the Cascades event loop, and composites each web texture into its PocketJS tile. Web pages receive no OmaBerry filesystem, command or agent JavaScript bindings. The PocketJS desktop and live `ui.js` evaluator remain separate native runtimes.
+
+The host links the system Qt/Cascades libraries through an ELF **RPATH**; BB10's loader does not honor the newer RUNPATH emitted by the SDK's gold linker. The pinned SDK's system `libcpp` is in its GCC 4.6.3 library directory; the existing host still compiles with GCC 4.8.3. No browser package or external Browser card is launched.
+
+Browser tools expose actual page metadata and bounded navigation, click, text and scroll operations. Page content and title are untrusted task data. Navigation completion, rendering and script compatibility are distinct: inspect `ready`, `loading`, `error` and the returned page title rather than treating a started request as successful. Four pages may exist simultaneously. Text commits are asynchronous; `inputAccepted` is 0 while pending, 1 after acceptance, or -1 if no supported text editor has focus. Current limitations include the age of system WebKit and unimplemented download management, popup/tab management and system form dialogs.
+
+`test/native-browser.html` is the real-device fixture for viewport resize, a JavaScript counter, input events, HTTPS navigation and scroll. Unit tests cover URL validation, text focus ownership, tile bounds and lifecycle. Physical trackpad/touch acceptance must be reported separately from scripted event injection.
+
+The standalone WebPage keeps a device-wide CSS root even after compositor resizing. The host constrains the document root to the tile width in an isolated JavaScript world and sends a resize event. This does not make fixed-layout pages responsive. The same isolated world commits text with the browser editor's `execCommand`; regular character, Backspace and Enter events from the Q20 use that path because this compositor has no Cascades TextInput control to commit IMF text. Other keyboard events are forwarded through `WebPageEventHandler`. Cross-origin iframe editors and arbitrary custom keyboard handlers are not covered. No page script is given native command access.
+
+Trackpad motion accumulates small movements, favors the dominant axis, clears reversed motion and limits focus steps to one per 70 ms. Menu + trackpad changes desktop focus, Alt + trackpad scrolls, a composing herdr draft receives candidate arrows/commit, and a Browser tile receives pointer movement. `test/native-trackpad.c` exercises these motion rules.

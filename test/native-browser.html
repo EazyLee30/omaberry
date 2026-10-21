@@ -1,0 +1,12 @@
+<!doctype html>
+<html><head><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Native browser</title><style>
+body{margin:0;background:#e8f0fa;color:#152235;font:22px sans-serif}
+header{background:#223a5e;color:white;padding:16px}
+button,input{box-sizing:border-box;font:22px sans-serif;margin:12px;padding:12px;width:90%}
+p{margin:12px}section{height:500px;background:linear-gradient(#8ec6d9,#ddd)}a{display:block;padding:12px}
+</style></head><body><header>OmaBerry embedded web page</header><p id="size"></p>
+<button id="count" onclick="this.innerHTML='Count: '+(++n);document.title='Count: '+n">Count: 0</button>
+<input placeholder="Type here" oninput="document.title='Input: '+this.value">
+<a href="https://example.com">Open example.com</a><p id="keys"></p><section>Scroll inside this tile</section><p>End of page</p>
+<script>var n=0;function size(){document.getElementById('size').innerHTML=innerWidth+' x '+innerHeight+' / body '+document.body.clientWidth;document.title='Viewport '+innerWidth+' x '+innerHeight}onresize=size;size();var events=[];['keydown','keypress','keyup'].forEach(function(k){document.addEventListener(k,function(e){events.push(k+':'+e.keyCode+':'+e.charCode);document.getElementById('keys').textContent=events.slice(-6).join(' ');});});</script></body></html>

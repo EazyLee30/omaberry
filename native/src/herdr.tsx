@@ -1,25 +1,31 @@
-import {For} from "solid-js";
+import {For,Show} from "solid-js";
 import {Text,View} from "@pocketjs/framework/solid/components";
-export function HerdrChrome(p:any){
- const wm=p.wm,t=()=>p.theme(),top=()=>wm.bar()?29:5,visibleSpaces=()=>wm.spaces().map((s:any,i:number)=>({name:s.name,i})).filter((s:any)=>s.i<3||s.i===wm.workspace()||wm.allIds(s.i).length).slice(0,5);
- const agents=()=>wm.apps().map((app:number,id:number)=>({app,id})).filter((a:any)=>a.app===5).sort((a:any,b:any)=>Number(b.id===p.agent.pending())-Number(a.id===p.agent.pending())).slice(0,4);
- const state=(id:number)=>p.agent.pending()===id?"working":p.agent.error(id)?"blocked":"idle";
- const tabs=()=>wm.current().tabs.map((tab:any,i:number)=>({name:tab.name,i})).slice(Math.floor(wm.current().selected/3)*3,Math.floor(wm.current().selected/3)*3+3);
- return <View class="absolute left-[5] w-[350] border flex-col" style={{insetT:top(),height:355-top(),bgColor:t().panel,borderColor:t().border}}>
-  <View class="absolute left-0 top-0 bottom-0 w-[90] flex-col p-1 overflow-hidden" style={{bgColor:t().sidebar}}>
-   <Text class="font-mono text-xs" style={{textColor:t().muted}}>spaces</Text>
-   <For each={visibleSpaces()}>{s=><View class="h-[24] px-1 items-center" style={{bgColor:s.i===wm.workspace()?t().selection:t().sidebar}} focusable onPress={()=>p.select(s.i)}><View class="w-[4] h-[4] mr-1" style={{bgColor:s.i===wm.workspace()?t().accent:t().border}}/><Text class="font-mono text-xs" style={{textColor:s.i===wm.workspace()?t().accent:t().text}}>{s.name.slice(0,9)}</Text></View>}</For>
-   <View class="h-[20] px-1 items-center" focusable onPress={()=>p.menu("spaces")}><Text class="font-mono text-xs" style={{textColor:t().muted}}>more...</Text></View>
-   <View class="h-[1] my-1" style={{bgColor:t().border}}/>
-   <Text class="font-mono text-xs" style={{textColor:t().muted}}>agents</Text>
-   <For each={agents()}>{a=><View class="h-[34] flex-col px-1 justify-center" focusable onPress={()=>p.focus(a.id)}><View class="flex-row items-center gap-1"><View class="w-[5] h-[5]" style={{bgColor:state(a.id)==="working"?t().good:state(a.id)==="blocked"?"#f7768e":t().muted}}/><Text class="font-mono text-xs" style={{textColor:t().text}}>{"agent "+(a.id+1)}</Text></View><Text class="font-mono text-xs" style={{textColor:t().muted}}>{state(a.id)}</Text></View>}</For>
-   <View class="h-[22] px-1 items-center" focusable onPress={()=>p.newTab(5)}><Text class="font-mono text-xs" style={{textColor:t().accent}}>+ agent</Text></View>
+import {Button} from "./controls.tsx";
+import {chatLines} from "./chat.ts";
+/** A regular desktop application: projects and agent tabs stay inside its bounds. */
+export function HerdrApp(p:any){
+ const h=p.herdr,t=()=>p.theme(),id=()=>h.selected(),draft=()=>p.drafts[id()],wide=()=>p.width()>=270;
+ const act=(fn:()=>void)=>{p.focus();fn();};
+ const state=(sid:number)=>p.agent.status(sid);
+ const tabs=()=>h.visible().slice(Math.floor(Math.max(0,h.visible().findIndex((s:any)=>s.id===id()))/2)*2).slice(0,2);
+ return <View class="w-full h-full flex-row overflow-hidden">
+  <Show when={wide()}><View class="w-[78] h-full flex-col p-1 overflow-hidden" style={{bgColor:t().sidebar}}>
+   <Text class="font-mono text-xs" style={{textColor:t().muted}}>projects</Text>
+   <For each={h.projects()}>{(project,i)=><View class="h-[24] px-1 justify-center focus:bg-[#414868]" style={{bgColor:i()===h.project()?t().selection:t().sidebar}} focusable onPress={()=>act(()=>p.project(i()))}><Text class="text-xs" style={{textColor:i()===h.project()?t().accent:t().text}}>{project.name}</Text></View>}</For>
+   <View class="h-[1] my-1" style={{bgColor:t().border}}/><Text class="font-mono text-xs" style={{textColor:t().muted}}>agents</Text>
+   <For each={h.visible().slice(-4)}>{s=><View class="h-[32] flex-col px-1 justify-center focus:bg-[#414868]" focusable onPress={()=>act(()=>p.session(s.id))}><Text class="text-xs" style={{textColor:s.id===id()?t().accent:t().text}}>{s.name}</Text><Text class="font-mono text-xs" style={{textColor:state(s.id)==="idle"?t().muted:t().good}}>{state(s.id)}</Text></View>}</For>
+   <Button label="+ agent" action={()=>act(p.newAgent)}/><Button label="+ shell" action={()=>act(p.shell)}/>
+  </View></Show>
+  <View class="flex-1 h-full flex-col overflow-hidden">
+   <View class="h-[22] flex-row overflow-hidden" style={{bgColor:t().sidebar}}>
+    <Show when={!wide()}><Button label={h.current().name} action={()=>act(()=>p.project((h.project()+1)%3))}/></Show>
+    <For each={tabs()}>{s=><Button label={s.name} selected={s.id===id()} action={()=>act(()=>p.session(s.id))}/>}</For><Button label="+" action={()=>act(()=>p.menu("sessions"))}/>
+   </View>
+   <View class="flex-1 flex-col p-1 overflow-hidden focus:bg-[#202332]" focusable onPress={p.focus}><Text class="text-xs" style={{lineHeight:12,textColor:t().text}}>{p.agent.output(id())}</Text></View>
+   <Show when={draft()?.mode()}><View class="h-[14] overflow-hidden"><Text class="font-mono text-xs" style={{textColor:t().accent}}>{draft().composition()||"Pinyin"}</Text></View><View class="h-[20] flex-row overflow-hidden"><For each={draft().visible()}>{(candidate,i)=><Button label={String(i()+1)+" "+Array.from(candidate).slice(0,2).join("")} selected={i()===draft().index()%3} action={()=>act(()=>draft().choose(i()))}/>}</For><Button label=">" action={()=>act(()=>draft().move(3))}/></View></Show>
+   <View class="h-[28] px-1 border flex-col overflow-hidden focus:bg-[#292e42]" style={{borderColor:t().border}} focusable onPress={p.focus}><Text class="text-xs" style={{lineHeight:12,textColor:t().text}}>{chatLines(p.agent.error(id())||draft()?.typed()||"",p.columns()).slice(-2).join("\n")||"> Message"}</Text></View>
+   <View class="h-[20] flex-row overflow-hidden"><Button label="Send" action={()=>act(()=>{if(draft()?.commit())p.agent.send();})}/><Button label={p.agent.pending()===id()?"Stop":"New"} action={()=>act(()=>p.agent.pending()===id()?p.agent.cancel():p.newAgent())}/><Button label={draft()?.mode()?"ABC":"CN"} action={()=>act(()=>draft()?.toggle())}/><Button label="<" action={()=>act(()=>p.agent.next(-1,id()))}/><Button label=">" action={()=>act(()=>p.agent.next(1,id()))}/></View>
+   <View class="h-[14] overflow-hidden"><Text class="font-mono text-xs" style={{textColor:t().muted}}>{h.current().name+" / "+state(id())}</Text></View>
   </View>
-  <View class="absolute left-[90] top-0 bottom-0 w-[1]" style={{bgColor:t().border}}/>
-  <View class="absolute left-[96] right-[4] top-0 h-[23] flex-row items-center gap-1">
-   <For each={tabs()}>{tab=><View class="w-[66] h-[22] border items-center px-1" style={{bgColor:tab.i===wm.current().selected?t().selection:t().panel,borderColor:tab.i===wm.current().selected?t().accent:t().border}} focusable onPress={()=>p.selectTab(tab.i)}><Text class="font-mono text-xs" style={{textColor:tab.i===wm.current().selected?t().text:t().muted}}>{tab.name.slice(0,7)}</Text></View>}</For>
-   <View class="w-[20] h-[22] items-center justify-center" focusable onPress={()=>p.menu("sessions")}><Text class="font-mono text-xs" style={{textColor:t().accent}}>+</Text></View>
-  </View>
-  <View class="absolute left-[96] right-[4] bottom-0 h-[16] flex-row items-center justify-between"><Text class="font-mono text-xs" style={{textColor:t().muted}}>{wm.current().name.slice(0,10)+" / "+(wm.current().selected+1)+" of "+wm.current().tabs.length}</Text><Text class="font-mono text-xs" style={{textColor:p.ui.error()?"#f7768e":t().good}}>{p.ui.error()?"UI error":p.agent.pending()>=0?"working":"local"}</Text></View>
  </View>;
 }

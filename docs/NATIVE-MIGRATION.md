@@ -164,3 +164,10 @@ Final executable, guest JavaScript and PAK were read back from the device and ma
 ### October 21: physical live UI and session-tab acceptance
 
 After the 0.9.0 native payload update, the user answered “计数保留、新 shell 标签都正常” to the icon-launch acceptance prompt. Tapping Count: 1 changed it to Count: 2; switching to the agent tab and returning to preview retained Count: 2. Holding the physical Menu key and pressing T opened a new shell tab. This confirms native button interaction, state retention across tab switches and the physical Menu + T shortcut. It does not add a physical restart-persistence test or acceptance of every new shortcut; the earlier scripted restart checks remain separate evidence. No code or package change was needed for this confirmation.
+
+
+## Native 0.10.0: independent herdr app and embedded web pages
+
+herdr is now a regular application window with independent project/agent state. The system desktops own recursive tiling; new shells create desktop windows. Chinese candidate buttons use the CJK font slot. Trackpad input accumulates small movements and separates desktop focus, scrolling, Pinyin selection and webpage pointer use. A native system-WebKit compositor embeds actual web pages inside desktop tiles, with bounded browser tools available to the agent.
+
+See [0.10.0 verification](NATIVE-0100.md) for real-device browser/form tests, four-shell recursive geometry, agent source/apply/present/rollback evidence and deployment details.

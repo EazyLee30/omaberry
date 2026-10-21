@@ -4,7 +4,7 @@ import { textConsume } from "@pocketjs/framework/text-input";
 import { reportAppAction } from "@pocketjs/framework/host";
 
 export class TerminalScreen {
-  cols=42; rows=11;
+  cols=42; rows=11; history:string[]=[]; offset=0;
   lines: string[][] = Array.from({length: this.rows}, () => Array(this.cols).fill(" "));
   resize(cols:number,rows:number) {
     cols=Math.max(8,Math.min(80,Math.floor(cols)));rows=Math.max(2,Math.min(40,Math.floor(rows)));
@@ -13,7 +13,7 @@ export class TerminalScreen {
     this.y=Math.max(0,Math.min(rows-1,this.y-shift));this.x=Math.min(cols-1,this.x);this.cols=cols;this.rows=rows;
   }
   x = 0; y = 0; escape = ""; osc = false; oscEscape = false;
-  newline() { this.y++; if(this.y >= this.rows) { this.lines.shift(); this.lines.push(Array(this.cols).fill(" ")); this.y = this.rows-1; } }
+  newline() { this.y++; if(this.y >= this.rows) { this.history.push(this.lines[0].join(""));if(this.history.length>600)this.history.shift();if(this.offset>0)this.offset=Math.min(this.history.length,this.offset+1);this.lines.shift(); this.lines.push(Array(this.cols).fill(" ")); this.y = this.rows-1; } }
   feed(data: string) {
     for(const ch of data) {
       if(this.osc) { if(ch === "\x07" || (this.oscEscape && ch === "\\")) this.osc=false; this.oscEscape=ch === "\x1b"; continue; }
@@ -49,7 +49,8 @@ export class TerminalScreen {
       this.lines[this.y][this.x++]=ch;
     }
   }
-  render() { return this.lines.map(row=>row.join("")).join("\n"); }
+  scroll(delta:number){this.offset=Math.max(0,Math.min(this.history.length,this.offset-delta));}
+  render() { const all=[...this.history,...this.lines.map(row=>row.join(""))];return all.slice(Math.max(0,all.length-this.rows-this.offset),all.length-this.offset).join("\n"); }
 }
 type Status = {data:string;state:string;error:string;pid:number;exitCode:number;focused:boolean;bytesRead:number};
 const api = (globalThis as any).omaTerminal;
@@ -63,8 +64,8 @@ export function createTerminal(active:()=>boolean, slot=0) {
   function open(cwd="") { if(!api) {setStatus("Native PTY unavailable");return;} if(api.open(slot,cwd)===false){setStatus("Shell could not start");return;} started=true; api.resize?.(screen.cols,screen.rows,slot); api.focus(true,slot); }
   function ensure(cwd=""){if(!started){open(cwd);blur();}}
   function focus() { if(!started) open(); else api.focus(true,slot); }
-  function send(text:string) { if(started) api.write(text,slot); }
-  function restart() { if(api) api.close(slot); screen.lines=Array.from({length:screen.rows},()=>Array(screen.cols).fill(" "));screen.x=screen.y=0;screen.escape="";screen.osc=screen.oscEscape=false;open(); }
+  function send(text:string) { screen.offset=0;setOutput(screen.render());if(started) api.write(text,slot); }
+  function restart() { if(api) api.close(slot); screen.lines=Array.from({length:screen.rows},()=>Array(screen.cols).fill(" "));screen.history=[];screen.offset=0;screen.x=screen.y=0;screen.escape="";screen.osc=screen.oscEscape=false;open(); }
   function resize(cols:number,rows:number) {if(screen.cols===cols&&screen.rows===rows)return;screen.resize(cols,rows);setOutput(screen.render());if(started)api.resize?.(cols,rows,slot);}
   function blur() {if(api) api.focus(false,slot);setFocused(false);}
   function start() {if(registered)return;registered=true;onFrame(()=>{
@@ -75,6 +76,6 @@ export function createTerminal(active:()=>boolean, slot=0) {
     if(s.bytesRead!==bytes){bytes=s.bytesRead;reportAppAction("terminal_read",bytes);}
     if(active() && s.focused) for(const text of textConsume()) send(text.replace(/\x08/g,"\x7f").replace(/\n/g,"\r"));
   });}
-  function close(){if(api)api.close(slot);started=false;setFocused(false);screen.lines=Array.from({length:screen.rows},()=>Array(screen.cols).fill(" "));screen.x=screen.y=0;screen.escape="";screen.osc=screen.oscEscape=false;setOutput(screen.render());setSessionState("closed");}
-  return {output,status,sessionState,focused,open,ensure,focus,send,restart,blur,start,resize,close};
+  function close(){if(api)api.close(slot);started=false;setFocused(false);screen.lines=Array.from({length:screen.rows},()=>Array(screen.cols).fill(" "));screen.history=[];screen.offset=0;screen.x=screen.y=0;screen.escape="";screen.osc=screen.oscEscape=false;setOutput(screen.render());setSessionState("closed");}
+  return {scroll:(delta:number)=>{screen.scroll(delta);setOutput(screen.render());},output,status,sessionState,focused,open,ensure,focus,send,restart,blur,start,resize,close};
 }

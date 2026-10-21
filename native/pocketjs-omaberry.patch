@@ -1,8 +1,8 @@
 diff --git a/engine/quickjs-c/pocket_runtime.c b/engine/quickjs-c/pocket_runtime.c
-index d4cd455..91a2069 100644
+index d4cd455..5aae0f2 100644
 --- a/engine/quickjs-c/pocket_runtime.c
 +++ b/engine/quickjs-c/pocket_runtime.c
-@@ -3,6 +3,15 @@
+@@ -3,6 +3,16 @@
  #include "pocket_ui_cabi.h"
  #include "pocket_spec.h"
  #include "quickjs.h"
@@ -14,21 +14,22 @@ index d4cd455..91a2069 100644
 +#include "../../hosts/blackberry-classic-qnx/ime_qjs.h"
 +#include "../../hosts/blackberry-classic-qnx/theme_qjs.h"
 +#include "../../hosts/blackberry-classic-qnx/ui_qjs.h"
++#include "../../hosts/blackberry-classic-qnx/browser_qjs.h"
 +#endif
  #ifdef POCKET_RUNTIME_EXTENSION
  #include "pocketjs_symbian_extension.h"
  /* Reuse the existing native core ABI, including its compatibility name. */
-@@ -557,6 +566,9 @@ static int add_host_operation(
+@@ -557,6 +567,9 @@ static int add_host_operation(
  }
  
  static int install_host(int width, int height) {
 +#ifdef __QNXNTO__
-+  if (!oma_install_terminal(context, global) || !oma_install_files(context, global) || !oma_install_ai(context, global) || !oma_install_exec(context, global) || !oma_install_ime(context, global) || !oma_install_theme(context, global) || !oma_install_ui(context, global)) return 0;
++  if (!oma_install_terminal(context, global) || !oma_install_files(context, global) || !oma_install_ai(context, global) || !oma_install_exec(context, global) || !oma_install_ime(context, global) || !oma_install_theme(context, global) || !oma_install_ui(context, global) || !oma_install_browser(context, global)) return 0;
 +#endif
  #ifdef POCKET_OFFLOAD_POSIX
    if (!install_offload(context, global)) return 0;
  #endif
-@@ -658,6 +670,14 @@ static int drain_jobs(void) {
+@@ -658,6 +671,14 @@ static int drain_jobs(void) {
  }
  
  void pocket_runtime_shutdown(void) {
@@ -43,7 +44,7 @@ index d4cd455..91a2069 100644
  #ifdef POCKET_RUNTIME_EXTENSION
    if (native_extension && native_extension->shutdown) native_extension->shutdown(native_gl_current);
    native_extension = NULL;
-@@ -811,6 +831,43 @@ int pocket_runtime_boot(
+@@ -811,6 +832,43 @@ int pocket_runtime_boot(
  }
  
  /* One guest turn (frame call + job drain), then `tick_count` core ticks. */
@@ -87,7 +88,7 @@ index d4cd455..91a2069 100644
  static int run_frame(
    uint32_t buttons,
    const PocketRuntimeContact *contacts,
-@@ -876,14 +933,52 @@ static int run_frame(
+@@ -876,14 +934,52 @@ static int run_frame(
        take_exception(context); runtime_failed = 1; return 0;
      }
    }
@@ -343,10 +344,10 @@ index 811e786..4937104 100644
      <env var="LD_LIBRARY_PATH" value="app/native/lib"/>
  </qnx>
 diff --git a/hosts/blackberry-classic-qnx/main.c b/hosts/blackberry-classic-qnx/main.c
-index 83ba130..a6946f6 100644
+index 83ba130..c48e3a5 100644
 --- a/hosts/blackberry-classic-qnx/main.c
 +++ b/hosts/blackberry-classic-qnx/main.c
-@@ -14,6 +14,7 @@
+@@ -14,11 +14,15 @@
  #include <errno.h>
  #include <limits.h>
  #include <stdint.h>
@@ -354,7 +355,15 @@ index 83ba130..a6946f6 100644
  #include <stdbool.h>
  #include <stdio.h>
  #include <stdlib.h>
-@@ -56,6 +57,13 @@ static int runtime_ready;
+ #include <string.h>
+ #include <unistd.h>
++#include <time.h>
++#include "trackpad_motion.h"
++#include "browser_native.h"
+ 
+ #ifndef POCKET_BUILD_ID
+ #error "POCKET_BUILD_ID must identify the concrete BlackBerry QNX build"
+@@ -56,6 +60,13 @@ static int runtime_ready;
  static PocketInputState input;
  
  static unsigned long frame_count;
@@ -368,7 +377,7 @@ index 83ba130..a6946f6 100644
  static unsigned long touch_event_count;
  static unsigned long keyboard_event_count;
  static unsigned long trackpad_event_count;
-@@ -68,6 +76,8 @@ static int last_trackpad_buttons;
+@@ -68,6 +79,8 @@ static int last_trackpad_buttons;
  static int last_key_sym;
  static int last_key_scan;
  static int last_key_flags;
@@ -377,7 +386,7 @@ index 83ba130..a6946f6 100644
  static unsigned long last_action_sequence;
  static char status_stage[32] = "starting";
  static char status_detail[256] = "host entry";
-@@ -110,6 +120,8 @@ static void write_status(void)
+@@ -110,6 +123,8 @@ static void write_status(void)
    fprintf(file, "frames=%lu\n", frame_count);
    fprintf(file, "touch_events=%lu\n", touch_event_count);
    fprintf(file, "keyboard_events=%lu\n", keyboard_event_count);
@@ -386,7 +395,7 @@ index 83ba130..a6946f6 100644
    fprintf(file, "trackpad_events=%lu\n", trackpad_event_count);
    fprintf(file, "trackpad_clicks=%lu\n", trackpad_click_count);
    fprintf(file, "trackpad_displacement=%d,%d\n", last_trackpad_dx, last_trackpad_dy);
-@@ -303,6 +315,18 @@ static uint32_t button_for_key(int symbol)
+@@ -303,6 +318,18 @@ static uint32_t button_for_key(int symbol)
    }
  }
  
@@ -405,7 +414,7 @@ index 83ba130..a6946f6 100644
  static void handle_keyboard(screen_event_t event)
  {
    int flags = 0;
-@@ -316,12 +340,109 @@ static void handle_keyboard(screen_event_t event)
+@@ -316,16 +343,115 @@ static void handle_keyboard(screen_event_t event)
    last_key_scan = scan;
    last_key_flags = flags;
    status_dirty = 1;
@@ -424,6 +433,7 @@ index 83ba130..a6946f6 100644
 +      return;
 +    }
 +  }
++  if(oma_browser_key(event))return;
 +  if (pocket_runtime_terminal_focused()) {
 +    const char *sequence = NULL;
 +    pocket_input_button(&input, button_for_key(symbol), 0, 0);
@@ -516,21 +526,59 @@ index 83ba130..a6946f6 100644
  }
  
  static void handle_touch(screen_event_t event, int type)
-@@ -356,6 +477,13 @@ static void handle_trackpad(screen_event_t event)
+ {
++  if(oma_browser_touch(event,type))return;
+   int position[2] = {0, 0};
+   int id = -1;
+   PocketTouchPhase phase;
+@@ -342,6 +468,10 @@ static void handle_touch(screen_event_t event, int type)
+ 
+ static void handle_trackpad(screen_event_t event)
+ {
++  static oma_trackpad_motion motion;
++  static int last_primary;
++  struct timespec clock_value;
++  unsigned long now;int step;
+   int displacement[2] = {0, 0};
+   int position[2] = {0, 0};
+   int buttons = 0;
+@@ -356,11 +486,30 @@ static void handle_trackpad(screen_event_t event)
    last_trackpad_y = position[1];
    last_trackpad_buttons = buttons;
    status_dirty = 1;
+-  /* Integer joystick displacement: every non-zero event is one focus pulse. */
+-  pocket_input_relative(&input, (float)displacement[0], (float)displacement[1]);
+-  primary = buttons != 0;
+-  if (primary && !input.primary_down) trackpad_click_count += 1;
+-  pocket_input_primary(&input, primary);
++  clock_gettime(CLOCK_MONOTONIC,&clock_value);
++  now=(unsigned long)clock_value.tv_sec*1000UL+(unsigned long)clock_value.tv_nsec/1000000UL;
++  step=oma_trackpad_step(&motion,displacement[0],displacement[1],now);
++  primary=buttons!=0;
++  if(primary&&!last_primary)trackpad_click_count++;
 +  if(oma_super_down){
-+    const char *direction=NULL;
-+    if(abs(displacement[0])>=abs(displacement[1])&&displacement[0])direction=displacement[0]>0?"right":"left";
-+    else if(displacement[1])direction=displacement[1]>0?"down":"up";
-+    if(direction){oma_super_used=1;pocket_runtime_shortcut(direction,8|(oma_super_mods&7));}
-+    return;
++    static const char *directions[]={"","up","right","down","left"};
++    if(step){oma_super_used=1;pocket_runtime_shortcut(directions[step],8|(oma_super_mods&7));}
++    pocket_input_primary(&input,0);
++  }else if(oma_super_mods&KEYMOD_ALT){
++    if(step==1||step==3)pocket_runtime_shortcut(step==1?"scroll-up":"scroll-down",4);
++    pocket_input_primary(&input,0);
++  }else if(oma_browser_pointer(displacement[0],displacement[1],primary)){
++    pocket_input_primary(&input,0);
++  }else if(pocket_runtime_composing()||pocket_runtime_terminal_focused()){
++    static const char *arrows[]={"","\033[A","\033[C","\033[B","\033[D"};
++    if(step)pocket_runtime_push_text((const unsigned char *)arrows[step],3);
++    if(primary&&!last_primary)pocket_runtime_push_text((const unsigned char *)"\r",1);
++    pocket_input_primary(&input,0);
++  }else{
++    if(step)pocket_input_relative(&input,step==2?1.0f:step==4?-1.0f:0.0f,step==3?1.0f:step==1?-1.0f:0.0f);
++    pocket_input_primary(&input,primary);
 +  }
-   /* Integer joystick displacement: every non-zero event is one focus pulse. */
-   pocket_input_relative(&input, (float)displacement[0], (float)displacement[1]);
-   primary = buttons != 0;
-@@ -399,6 +527,7 @@ static void handle_navigator_event(bps_event_t *event)
++  last_primary=primary;
+ }
+ 
+ static void handle_screen_event(bps_event_t *event)
+@@ -399,6 +548,7 @@ static void handle_navigator_event(bps_event_t *event)
        break;
      case NAVIGATOR_WINDOW_INACTIVE:
        app_active = 0;
@@ -538,7 +586,7 @@ index 83ba130..a6946f6 100644
        set_status("inactive", "window inactive");
        break;
      case NAVIGATOR_ORIENTATION_CHECK:
-@@ -427,6 +556,46 @@ static void handle_event(bps_event_t *event)
+@@ -427,6 +577,46 @@ static void handle_event(bps_event_t *event)
    else if (domain == navigator_get_domain()) handle_navigator_event(event);
  }
  
@@ -585,7 +633,7 @@ index 83ba130..a6946f6 100644
  static int render_frame(void)
  {
    PocketInputSample sample;
-@@ -441,15 +610,25 @@ static int render_frame(void)
+@@ -441,15 +631,26 @@ static int render_frame(void)
    frame.touch_hit = sample.touch_down
      ? pocket_runtime_hit_test_bounds((float)frame.touch_x, (float)frame.touch_y)
      : 0;
@@ -601,6 +649,7 @@ index 83ba130..a6946f6 100644
 +    set_error("OpenGL ES rendering failed");
 +    return 0;
 +  }
++  oma_browser_render(surface_width,surface_height);
 +  if (frame_count == 0 || capture_requested) {
 +    capture_requested = 0;
 +    capture_first_frame();
@@ -613,15 +662,19 @@ index 83ba130..a6946f6 100644
    frame_count += 1;
    action_sequence = pocket_runtime_action_sequence();
    if (action_sequence != last_action_sequence) {
-@@ -467,6 +646,7 @@ int main(int argc, char **argv)
-   bps_event_t *event = NULL;
+@@ -464,9 +665,9 @@ int main(int argc, char **argv)
+ {
+   Asset java_script = {NULL, 0};
+   Asset pack = {NULL, 0};
+-  bps_event_t *event = NULL;
    int exit_code = EXIT_FAILURE;
-   (void)argc;
+-  (void)argc;
++  oma_browser_init(argc,argv,handle_event);
 +  signal(SIGUSR1, request_capture);
  
    initialize_executable_directory(argv == NULL ? NULL : argv[0]);
    pocket_input_init(&input, 1.0f);
-@@ -475,6 +655,8 @@ int main(int argc, char **argv)
+@@ -475,6 +676,8 @@ int main(int argc, char **argv)
      set_error("bps_initialize failed");
      goto cleanup;
    }
@@ -630,7 +683,7 @@ index 83ba130..a6946f6 100644
    if (!initialize_graphics()) goto cleanup_bps;
    if (screen_request_events(screen_context) != BPS_SUCCESS ||
        navigator_request_events(0) != BPS_SUCCESS) {
-@@ -485,6 +667,8 @@ int main(int argc, char **argv)
+@@ -485,6 +688,8 @@ int main(int argc, char **argv)
      set_error("cannot read packaged app.js or app.pak");
      goto cleanup_graphics;
    }
@@ -639,7 +692,7 @@ index 83ba130..a6946f6 100644
    if (!pocket_runtime_boot(
          (const char *)java_script.bytes,
          java_script.length,
-@@ -501,11 +685,11 @@ int main(int argc, char **argv)
+@@ -501,30 +706,17 @@ int main(int argc, char **argv)
      set_error("PocketJS GLES2 backend initialization failed");
      goto cleanup_runtime;
    }
@@ -649,18 +702,43 @@ index 83ba130..a6946f6 100644
  
    while (!app_shutdown) {
 -    int timeout = app_active ? 0 : -1;
-+    int timeout = app_active ? 0 : pocket_runtime_background_busy() ? 100 : -1;
-     if (bps_get_event(&event, timeout) != BPS_SUCCESS) {
-       set_error("bps_get_event failed");
-       break;
-@@ -523,6 +707,7 @@ int main(int argc, char **argv)
-       } while (event != NULL && !app_shutdown && app_active);
-       if (!app_shutdown && !render_frame()) app_shutdown = 1;
-     } else {
-+      if(pocket_runtime_background_busy()&&!render_frame())app_shutdown=1;
-       write_status();
-     }
+-    if (bps_get_event(&event, timeout) != BPS_SUCCESS) {
+-      set_error("bps_get_event failed");
+-      break;
+-    }
+-    handle_event(event);
+-    if (app_active) {
+-      do {
+-        event = NULL;
+-        if (bps_get_event(&event, 0) != BPS_SUCCESS) {
+-          set_error("bps_get_event drain failed");
+-          app_shutdown = 1;
+-          break;
+-        }
+-        handle_event(event);
+-      } while (event != NULL && !app_shutdown && app_active);
+-      if (!app_shutdown && !render_frame()) app_shutdown = 1;
+-    } else {
+-      write_status();
+-    }
++    oma_browser_pump(!app_active&&!pocket_runtime_background_busy());
++    eglMakeCurrent(egl_display,egl_surface,egl_surface,egl_context);
++    if(app_shutdown)break;
++    if(app_active||pocket_runtime_background_busy()){
++      if(!render_frame())app_shutdown=1;
++      if(!app_active)usleep(50000);
++    }else {write_status();usleep(50000);}
    }
+   exit_code = status_stage[0] == 'e' ? EXIT_FAILURE : EXIT_SUCCESS;
+ 
+@@ -535,6 +727,7 @@ cleanup_runtime:
+     runtime_ready = 0;
+   }
+ cleanup_graphics:
++  oma_browser_shutdown();
+   destroy_graphics();
+ cleanup_bps:
+   bps_shutdown();
 diff --git a/tools/blackberry-qnx.ts b/tools/blackberry-qnx.ts
 index 344af48..e8d1798 100644
 --- a/tools/blackberry-qnx.ts
@@ -675,10 +753,42 @@ index 344af48..e8d1798 100644
    );
    const identity = packageIdentity(bundle.inputs.app);
 diff --git a/tools/blackberry-qnx/build.sh b/tools/blackberry-qnx/build.sh
-index 43e4046..ae5e009 100755
+index 43e4046..aaf4089 100755
 --- a/tools/blackberry-qnx/build.sh
 +++ b/tools/blackberry-qnx/build.sh
-@@ -116,6 +116,10 @@ first_party_flags=(
+@@ -94,7 +94,11 @@ first_party_flags=(
+   -c /repo/hosts/blackberry-classic-qnx/main.c \
+   -o "$objects/main.o"
+ 
+-"$qcc" "${qnx_target[@]}" \
++qt_flags=(-I"$QNX_TARGET/usr/include/qt4" -I"$QNX_TARGET/usr/include/qt4/QtCore" -I"$objects" -I/repo/hosts/blackberry-classic-qnx)
++"$QNX_HOST/usr/bin/moc" "${qt_flags[@]}" /repo/hosts/blackberry-classic-qnx/browser_native.cpp -o "$objects/browser_native.moc"
++"$qcc" "${qnx_target[@]}" -lang-c++ -std=gnu++0x -Os -fPIE -Wall -Wextra -Werror "${qt_flags[@]}" -c /repo/hosts/blackberry-classic-qnx/browser_native.cpp -o "$objects/browser_native.o"
++
++"$qcc" "${qnx_target[@]}" -lang-c++ \
+   -pie \
+   -Wl,-z,relro \
+   -Wl,-z,now \
+@@ -102,6 +106,7 @@ first_party_flags=(
+   -Wl,--no-undefined \
+   -o "$staging/pocketjs-classic" \
+   "$objects/main.o" \
++  "$objects/browser_native.o" \
+   "$objects/pocket_runtime.o" \
+   "$objects/pocket_input.o" \
+   "$objects/rust_eh_personality.o" \
+@@ -111,11 +116,20 @@ first_party_flags=(
+   -lscreen \
+   -lEGL \
+   -lGLESv2 \
+-  -lm
++  -lm \
++  -L"$QNX_TARGET/armle-v7/lib/gcc/4.6.3" \
++  -L"$QNX_TARGET/armle-v7/usr/lib/qt4/lib" \
++  -Wl,--disable-new-dtags -Wl,-rpath,/usr/lib/qt4/lib \
++  -Wl,-rpath-link,"$QNX_TARGET/armle-v7/usr/lib/qt4/lib" \
++  -lQtCore -lQtGui -lQtNetwork -lQtXml -lQtSql -lQtScript -lQtDeclarative -lQtSvg -lQtXmlPatterns -lQtOpenGL -lbbcascades -lbb
+ 
  "$readelf" -h -l -A -d "$staging/pocketjs-classic" > /build/pocketjs-classic.readelf.txt
  "$nm" -g "$staging/pocketjs-classic" > /build/pocketjs-classic.symbols.txt
  
